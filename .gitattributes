@@ -1,2 +1,2 @@
-# Shell scripts must keep LF endings or bash fails with $'' errors.
+# Shell scripts must keep LF line endings, otherwise bash fails on the  characters.
 *.sh text eol=lf
