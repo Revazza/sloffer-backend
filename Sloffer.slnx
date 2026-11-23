@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Sloffer.Api/Sloffer.Api.csproj" />
+    <Project Path="src/Sloffer.Data/Sloffer.Data.csproj" />
+    <Project Path="src/Sloffer.Jobs/Sloffer.Jobs.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Sloffer.Tests/Sloffer.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,12 @@
+<Project>
+  <!-- Shared by every project in the solution. -->
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- No unsigned .exe per project: Windows Application Control blocks them. Run via dotnet.exe. -->
+    <UseAppHost>false</UseAppHost>
+    <!-- One secret store for Api, Jobs, Tests and EF tooling (connection strings). -->
+    <UserSecretsId>sloffer-backend</UserSecretsId>
+  </PropertyGroup>
+</Project>
