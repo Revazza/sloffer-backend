@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Sloffer.Data;
+using Sloffer.Jobs.Matching;
 
 namespace Sloffer.Jobs.Fetching;
 
@@ -23,6 +24,7 @@ public sealed record SourceFetchResult(string Source, SourceFetchStatus Status, 
 /// </summary>
 public sealed class JobFetcher(
     IServiceScopeFactory scopes,
+    JobScorer scorer,
     IOptionsMonitor<JobFetchOptions> options,
     TimeProvider time,
     ILogger<JobFetcher> logger)
@@ -96,7 +98,7 @@ public sealed class JobFetcher(
         }
     }
 
-    private static async Task<int> StoreAsync(
+    private async Task<int> StoreAsync(
         SlofferDbContext db,
         string sourceName,
         IReadOnlyList<FetchedJob> fetched,
@@ -121,7 +123,7 @@ public sealed class JobFetcher(
 
         var newJobs = recent
             .Where(j => !existingIds.Contains(j.ExternalId))
-            .Select(j => new Job
+            .Select(j => ScoredJob(j, new Job
             {
                 Id = Guid.CreateVersion7(now),
                 Source = sourceName,
@@ -135,7 +137,7 @@ public sealed class JobFetcher(
                 Description = j.Description,
                 PostedAt = j.PostedAt.ToUniversalTime(),
                 FetchedAt = now,
-            })
+            }, now))
             .ToList();
 
         if (newJobs.Count == 0)
@@ -145,5 +147,12 @@ public sealed class JobFetcher(
         await db.SaveChangesAsync(ct);
         db.ChangeTracker.Clear();
         return newJobs.Count;
+    }
+
+    /// <summary>Every new job is scored at insert time.</summary>
+    private Job ScoredJob(FetchedJob fetched, Job job, DateTimeOffset now)
+    {
+        JobRescoreService.Apply(job, scorer.Score(fetched), now);
+        return job;
     }
 }

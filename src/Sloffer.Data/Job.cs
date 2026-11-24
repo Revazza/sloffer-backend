@@ -32,4 +32,16 @@ public sealed class Job
 
     /// <summary>When Sloffer stored the listing (UTC).</summary>
     public DateTimeOffset FetchedAt { get; set; }
+
+    /// <summary>Rule-based fit score, 0-100 (0 = failed a hard rule). Null until scored.</summary>
+    public int? Score { get; set; }
+
+    /// <summary>Plain-language reasons behind <see cref="Score"/>, stored as a jsonb string array. Null until scored.</summary>
+    public List<string>? ScoreReasons { get; set; }
+
+    /// <summary>Version of the scoring rules that produced <see cref="Score"/>. Null until scored.</summary>
+    public int? ScoreVersion { get; set; }
+
+    /// <summary>When the job was last scored (UTC). Null until scored.</summary>
+    public DateTimeOffset? ScoredAt { get; set; }
 }
