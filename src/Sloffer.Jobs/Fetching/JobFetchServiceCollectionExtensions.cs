@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Sloffer.Data;
 using Sloffer.Jobs.Matching;
 
 namespace Sloffer.Jobs.Fetching;
@@ -15,6 +16,7 @@ public static class JobFetchServiceCollectionExtensions
         services.AddOptions<JobFetchOptions>()
             .Bind(configuration.GetSection(JobFetchOptions.SectionName))
             .Validate(o => o.IsValid(), "JobFetch: CycleDelay must be > 0 and every MinInterval >= 0.")
+            .Validate(o => JobAgeWindow.IsValid(o.MaxAgeDays), JobAgeWindow.ValidationMessage)
             .ValidateOnStart();
 
         services.TryAddSingleton(TimeProvider.System);

@@ -1,9 +1,19 @@
+using Sloffer.Data;
+
 namespace Sloffer.Jobs.Fetching;
 
 /// <summary>Settings for <see cref="JobFetchService"/>, bound from the <c>JobFetch</c> config section.</summary>
 public sealed class JobFetchOptions
 {
-    public const string SectionName = "JobFetch";
+    public const string SectionName = JobAgeWindow.SectionName;
+
+    /// <summary>
+    /// Age window in days (1-30, default 7): sources are asked for listings posted since now minus this window,
+    /// and older listings are dropped before storing. Already stored jobs are never removed when they age out.
+    /// </summary>
+    public int MaxAgeDays { get; set; } = JobAgeWindow.DefaultMaxAgeDays;
+
+    public TimeSpan MaxAge => TimeSpan.FromDays(MaxAgeDays);
 
     /// <summary>Pause between fetch cycles. Each cycle only calls sources whose <c>MinInterval</c> has elapsed.</summary>
     public TimeSpan CycleDelay { get; set; } = TimeSpan.FromMinutes(5);
