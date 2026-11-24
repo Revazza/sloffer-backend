@@ -32,8 +32,15 @@ namespace Sloffer.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("DedupKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<string>("Description")
                         .HasColumnType("text");
+
+                    b.Property<Guid?>("DuplicateOfId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("EmploymentTypes")
                         .HasColumnType("text");
@@ -82,6 +89,10 @@ namespace Sloffer.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("DedupKey");
+
+                    b.HasIndex("DuplicateOfId");
+
                     b.HasIndex("PostedAt");
 
                     b.HasIndex("Score");
@@ -90,6 +101,14 @@ namespace Sloffer.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("Jobs");
+                });
+
+            modelBuilder.Entity("Sloffer.Data.Job", b =>
+                {
+                    b.HasOne("Sloffer.Data.Job", null)
+                        .WithMany()
+                        .HasForeignKey("DuplicateOfId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 #pragma warning restore 612, 618
         }

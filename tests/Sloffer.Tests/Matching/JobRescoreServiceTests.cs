@@ -85,13 +85,13 @@ public sealed class JobRescoreServiceTests
     }
 
     [Fact]
-    public void AddJobFetching_registers_rescore_before_the_fetch_worker()
+    public void AddJobFetching_registers_backfill_and_rescore_before_the_fetch_worker()
     {
         using var services = CreateServices(new ManualTimeProvider(Start), []);
 
         var hosted = services.GetServices<IHostedService>().Select(s => s.GetType().Name).ToList();
 
-        Assert.Equal(["JobRescoreService", "JobFetchService"], hosted);
+        Assert.Equal(["JobDedupBackfillService", "JobRescoreService", "JobFetchService"], hosted);
     }
 
     private static JobRescoreService RescoreService(IServiceProvider services) =>

@@ -20,7 +20,7 @@ See `CLAUDE.md` for structure, all commands and conventions.
 
 The full contract is the OpenAPI document at `/openapi/v1.json` (Development only).
 
-- `GET /api/jobs`: recent jobs, newest first (`postedAt` descending, then `id`). Query: `page` (default 1), `pageSize` (default 20, max 100), `q` (title or company, case-insensitive), `location` (case-insensitive contains), `source` (exact), `postedWithinHours` (default `JobFetch:MaxAgeDays * 24`, so 168; max 720; pass 24 for "new today"). Returns `items`, `page`, `pageSize`, `totalCount`; each item has a plain-text `descriptionExcerpt` (first 300 characters). Out-of-range values return 400 (validation problem details).
+- `GET /api/jobs`: recent jobs, newest first (`postedAt` descending, then `id`). Query: `page` (default 1), `pageSize` (default 20, max 100), `q` (title or company, case-insensitive), `location` (case-insensitive contains), `source` (exact), `postedWithinHours` (default `JobFetch:MaxAgeDays * 24`, so 168; max 720; pass 24 for "new today"), `includeDuplicates` (default false). Returns `items`, `page`, `pageSize`, `totalCount`; each item has a plain-text `descriptionExcerpt` (first 300 characters) and `duplicateOfId`. Duplicates (see below) are hidden and not counted unless `includeDuplicates=true`. Out-of-range values return 400 (validation problem details).
 - `GET /api/jobs/{id}`: one job including the full `description` as stored from the source, or 404.
 
 ## Job fetching (`Sloffer.Jobs`)
@@ -29,6 +29,7 @@ The full contract is the OpenAPI document at `/openapi/v1.json` (Development onl
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
+| `JobFetch:BackfillDedupOnStartup` | `false` | On worker startup, compute `DedupKey` / `DuplicateOfId` for rows stored before de-duplication existed (batches of 500, oldest first). Safe to run twice. |
 | `JobFetch:MaxAgeDays` | `7` | Age window in days (1-30): sources are asked for listings since now minus this window and older listings are dropped. Jobs already stored are never deleted or changed when they age out. The API reads the same key for its default `postedWithinHours`, so set it for both `Sloffer.Api` and `Sloffer.Jobs` (or use the env var `JobFetch__MaxAgeDays`). |
 | `JobFetch:CycleDelay` | `00:05:00` | Pause between cycles. |
 | `JobFetch:MinInterval` | `01:00:00` | Minimum time between two fetches of the same source. |
@@ -47,6 +48,10 @@ Defaults live in `JobFetchOptions`; override them in `src/Sloffer.Jobs/appsettin
 | `JobFetch:Jobicy:Industry` | `engineering` | Industry filter; empty = none. |
 | `JobFetch:Jobicy:MinInterval` | `01:00:00` | Time between fetches; lower values fail at startup. |
 | `JobFetch:Jobicy:Timeout` | `00:00:30` | HTTP request timeout. |
+
+## De-duplication (`Sloffer.Jobs/Dedup`)
+
+Within one source the unique index on (`Source`, `ExternalId`) prevents repeats. Across sources and reposts, every new job gets a `DedupKey`: `JobDedup.NormalizeKey(company, title)`, the SHA-256 hex of `company|title` after normalization (lowercase, trimmed, whitespace collapsed, punctuation stripped except `#` and `+`, legal suffixes such as Inc/Ltd/GmbH/B.V. removed from the end of the company, gender markers such as "(m/f/d)" and "remote" removed from the title; level words like junior/senior stay). If an original (a stored job with the same key and no `DuplicateOfId`) was posted within `JobFetch:MaxAgeDays` of the new job, the new job gets `DuplicateOfId` = the earliest such original. Duplicates are still stored and scored; nothing is deleted, and stored jobs are never changed by this logic. Rows from before de-duplication have a null key until the backfill runs (`JobFetch:BackfillDedupOnStartup`).
 
 ## Job scoring (`Sloffer.Jobs/Matching`)
 
