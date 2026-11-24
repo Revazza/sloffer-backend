@@ -65,7 +65,7 @@ It creates the `sloffer` DB user and the `sloffer` + `sloffer_test` databases, a
 
 ## Product context
 
-Sloffer is Sandro's personal job finder. The Jobs worker pulls recent (24h max) public job listings into the same PostgreSQL DB the API reads; the React frontend (not built yet) shows them. Goal: **.NET-oriented jobs in EMEA that fit him**, not keyword matches.
+Sloffer is Sandro's personal job finder. The Jobs worker pulls recent public job listings (posted within `JobFetch:MaxAgeDays`, default 7 days) into the same PostgreSQL DB the API reads; the React frontend (not built yet) shows them. Goal: **.NET-oriented jobs in EMEA that fit him**, not keyword matches.
 
 - Profile the matching assumes: ~4 years .NET/C# backend, mid/medior (stretch senior), strongest in fintech/banking/payments, owns production services, shared libraries and test infrastructure. Gaps: cloud provider, Kubernetes, modern frontend.
 - Matching is **rules first** (hard filters: .NET, EMEA, seniority; soft points: domain, stack overlap, gaps, visa/relocation, remote, years required), stored as `Score` + reasons on each job. AI scoring of the top few jobs may come later, not before.
