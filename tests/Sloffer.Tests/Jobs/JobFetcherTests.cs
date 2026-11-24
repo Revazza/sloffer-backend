@@ -1,6 +1,7 @@
 using System.Net;
 using Microsoft.Extensions.DependencyInjection;
 using Sloffer.Jobs.Fetching;
+using Sloffer.Jobs.Matching;
 using static Sloffer.Tests.Jobs.JobFetchTestSetup;
 
 namespace Sloffer.Tests.Jobs;
@@ -128,6 +129,33 @@ public sealed class JobFetcherTests
         Assert.Equal(postedAt, job.PostedAt);
         Assert.Equal(TimeSpan.Zero, job.PostedAt.Offset);
         Assert.Equal(Start, job.FetchedAt);
+    }
+
+    [Fact]
+    public async Task RunCycle_stores_new_jobs_with_score_and_reasons()
+    {
+        var time = new ManualTimeProvider(Start);
+        var name = UniqueSourceName();
+        var dotNet = new FetchedJob(name, "fit", "https://example.test/fit", "Senior .NET Developer", "Acme",
+            "Remote, Europe", "Full-Time", "Senior", "<p>Payments platform with Kafka.</p>", Start.AddHours(-1));
+        var java = new FetchedJob(name, "java", "https://example.test/java", "Java Developer", "Acme",
+            "Spain", null, null, "<p>Java only.</p>", Start.AddHours(-1));
+        await using var services = CreateServices(time, [FakeJobSource.Returning(name, dotNet, java)]);
+
+        await services.GetRequiredService<JobFetcher>().RunCycleAsync(CancellationToken.None);
+
+        var stored = (await StoredJobsAsync(services, name)).ToDictionary(j => j.ExternalId);
+        var fit = stored["fit"];
+        Assert.Equal(40 + 15 + 5 + 12 + 3 + 6, fit.Score);
+        Assert.Equal(
+            ["title mentions .NET/C# (+15)", "senior title (+5)", "domain: payments (+12)", "stack: Kafka (+3)", "remote in EMEA (+6)"],
+            fit.ScoreReasons);
+        Assert.Equal(JobScorer.Version, fit.ScoreVersion);
+        Assert.Equal(Start, fit.ScoredAt);
+        var rejected = stored["java"];
+        Assert.Equal(0, rejected.Score);
+        Assert.Equal(["not .NET"], rejected.ScoreReasons);
+        Assert.Equal(JobScorer.Version, rejected.ScoreVersion);
     }
 
     [Fact]
