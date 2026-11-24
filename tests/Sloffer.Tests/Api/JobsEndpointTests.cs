@@ -1,8 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Sloffer.Api.Contracts;
 using Sloffer.Data;
 
@@ -110,16 +112,70 @@ public sealed class JobsEndpointTests(SlofferApiFactory factory)
     }
 
     [Fact]
-    public async Task List_excludes_jobs_posted_more_than_24_hours_ago()
+    public async Task List_by_default_returns_jobs_from_the_last_7_days()
+    {
+        var source = UniqueSource();
+        await SeedAsync(
+            NewJob(source, "yesterday", Now.AddHours(-25)),
+            NewJob(source, "six-days", Now.AddDays(-6)),
+            NewJob(source, "too-old", Now.AddDays(-7).AddHours(-1)));
+
+        var body = await ListAsync($"source={source}");
+
+        Assert.Equal(["yesterday", "six-days"], body.Items.Select(j => j.Title));
+    }
+
+    [Fact]
+    public async Task List_postedWithinHours_24_returns_only_new_today()
     {
         var source = UniqueSource();
         await SeedAsync(
             NewJob(source, "recent", Now.AddHours(-23)),
-            NewJob(source, "too-old", Now.AddHours(-25)));
+            NewJob(source, "yesterday", Now.AddHours(-25)));
 
-        var body = await ListAsync($"source={source}");
+        var body = await ListAsync($"source={source}&postedWithinHours=24");
 
         Assert.Equal(["recent"], body.Items.Select(j => j.Title));
+    }
+
+    [Fact]
+    public async Task List_postedWithinHours_720_returns_jobs_from_the_last_30_days()
+    {
+        var source = UniqueSource();
+        await SeedAsync(
+            NewJob(source, "twenty-days", Now.AddDays(-20)),
+            NewJob(source, "too-old", Now.AddDays(-31)));
+
+        var body = await ListAsync($"source={source}&postedWithinHours=720");
+
+        Assert.Equal(["twenty-days"], body.Items.Select(j => j.Title));
+    }
+
+    [Fact]
+    public async Task List_default_window_follows_JobFetch_MaxAgeDays()
+    {
+        var source = UniqueSource();
+        await SeedAsync(
+            NewJob(source, "one-day", Now.AddDays(-1)),
+            NewJob(source, "three-days", Now.AddDays(-3)));
+        await using var customFactory = factory.WithWebHostBuilder(b => b.UseSetting("JobFetch:MaxAgeDays", "2"));
+        using var client = customFactory.CreateClient();
+
+        var body = await client.GetFromJsonAsync<JobListResponse>($"/api/jobs?source={source}");
+
+        Assert.NotNull(body);
+        Assert.Equal(["one-day"], body.Items.Select(j => j.Title));
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("31")]
+    public void Api_with_MaxAgeDays_outside_1_to_30_fails_at_startup(string value)
+    {
+        using var invalidFactory = factory.WithWebHostBuilder(b => b.UseSetting("JobFetch:MaxAgeDays", value));
+
+        var error = Assert.Throws<OptionsValidationException>(() => invalidFactory.CreateClient());
+        Assert.Contains("JobFetch:MaxAgeDays must be between 1 and 30 (days).", error.Failures);
     }
 
     [Fact]
@@ -158,8 +214,8 @@ public sealed class JobsEndpointTests(SlofferApiFactory factory)
     [InlineData("page=-1", "page must be 1 or greater.")]
     [InlineData("pageSize=0", "pageSize must be between 1 and 100.")]
     [InlineData("pageSize=101", "pageSize must be between 1 and 100.")]
-    [InlineData("postedWithinHours=0", "postedWithinHours must be between 1 and 24.")]
-    [InlineData("postedWithinHours=25", "postedWithinHours must be between 1 and 24.")]
+    [InlineData("postedWithinHours=0", "postedWithinHours must be between 1 and 720.")]
+    [InlineData("postedWithinHours=721", "postedWithinHours must be between 1 and 720.")]
     public async Task List_invalid_paging_returns_400_with_message(string queryString, string expectedMessage)
     {
         using var client = factory.CreateClient();
@@ -237,6 +293,10 @@ public sealed class JobsEndpointTests(SlofferApiFactory factory)
         var parameters = list.GetProperty("parameters").EnumerateArray().Select(p => p.GetProperty("name").GetString()).ToList();
         foreach (var name in new[] { "Page", "PageSize", "Q", "Location", "Source", "PostedWithinHours" })
             Assert.Contains(parameters, p => string.Equals(p, name, StringComparison.OrdinalIgnoreCase));
+        var postedWithinHours = list.GetProperty("parameters").EnumerateArray()
+            .Single(p => string.Equals(p.GetProperty("name").GetString(), "PostedWithinHours", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains("JobFetch:MaxAgeDays * 24", postedWithinHours.GetProperty("description").GetString());
+        Assert.DoesNotContain("1 to 24.", postedWithinHours.GetRawText());
 
         static List<string> ResponseCodes(JsonElement operation) =>
             operation.GetProperty("responses").EnumerateObject().Select(r => r.Name).Order().ToList();
