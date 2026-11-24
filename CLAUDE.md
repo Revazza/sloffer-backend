@@ -62,3 +62,14 @@ It creates the `sloffer` DB user and the `sloffer` + `sloffer_test` databases, a
 - Packages: stay on 10.x versions (11.x targets .NET 11 and won't install). Don't add packages without a clear need.
 - Secrets only in user-secrets / env vars. Never in appsettings or git.
 - Git: work on a branch (`task/<clickupTaskId>-<slug>` for ClickUp tasks), open a PR, never push to or merge into main.
+
+## Product context
+
+Sloffer is Sandro's personal job finder. The Jobs worker pulls recent (24h max) public job listings into the same PostgreSQL DB the API reads; the React frontend (not built yet) shows them. Goal: **.NET-oriented jobs in EMEA that fit him**, not keyword matches.
+
+- Profile the matching assumes: ~4 years .NET/C# backend, mid/medior (stretch senior), strongest in fintech/banking/payments, owns production services, shared libraries and test infrastructure. Gaps: cloud provider, Kubernetes, modern frontend.
+- Matching is **rules first** (hard filters: .NET, EMEA, seniority; soft points: domain, stack overlap, gaps, visa/relocation, remote, years required), stored as `Score` + reasons on each job. AI scoring of the top few jobs may come later, not before.
+- Sources: Jobicy is live. Others come later as one more `IJobSource` each (see `Sloffer.Jobs/Sources/Jobicy` as the pattern).
+- Planned work lives in `docs/next/*.md` (specs written for the implement-task flow). Order: jobs API, rule-based scoring, score in the API.
+- Applying migrations is manual: `dotnet ef database update --project src/Sloffer.Data`.
+
