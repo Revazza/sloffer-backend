@@ -55,6 +55,18 @@ namespace Sloffer.Data.Migrations
                     b.Property<DateTimeOffset>("PostedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int?>("Score")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ScoreReasons")
+                        .HasColumnType("jsonb");
+
+                    b.Property<int?>("ScoreVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("ScoredAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Source")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -71,6 +83,8 @@ namespace Sloffer.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("PostedAt");
+
+                    b.HasIndex("Score");
 
                     b.HasIndex("Source", "ExternalId")
                         .IsUnique();
