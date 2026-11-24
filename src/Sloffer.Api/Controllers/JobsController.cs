@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Sloffer.Api.Contracts;
 using Sloffer.Api.Jobs;
 using Sloffer.Data;
@@ -8,15 +9,19 @@ namespace Sloffer.Api.Controllers;
 
 [ApiController]
 [Route("api/jobs")]
-public sealed class JobsController(SlofferDbContext db, TimeProvider time) : ControllerBase
+public sealed class JobsController(SlofferDbContext db, TimeProvider time, IOptions<JobListOptions> options) : ControllerBase
 {
-    /// <summary>Recent jobs, newest first (PostedAt descending, then Id), filtered and paged in the database.</summary>
+    /// <summary>
+    /// Recent jobs, newest first (PostedAt descending, then Id), filtered and paged in the database.
+    /// By default lists the whole job age window (<c>JobFetch:MaxAgeDays</c>, 7 days by default).
+    /// </summary>
     [HttpGet]
     [ProducesResponseType<JobListResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<JobListResponse>> List([FromQuery] JobListQuery query, CancellationToken cancellationToken)
     {
-        var postedSince = time.GetUtcNow().AddHours(-query.PostedWithinHours);
+        var postedWithinHours = query.PostedWithinHours ?? options.Value.DefaultPostedWithinHours;
+        var postedSince = time.GetUtcNow().AddHours(-postedWithinHours);
 
         var jobs = db.Jobs.AsNoTracking().Where(j => j.PostedAt >= postedSince);
 

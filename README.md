@@ -20,15 +20,16 @@ See `CLAUDE.md` for structure, all commands and conventions.
 
 The full contract is the OpenAPI document at `/openapi/v1.json` (Development only).
 
-- `GET /api/jobs`: recent jobs, newest first (`postedAt` descending, then `id`). Query: `page` (default 1), `pageSize` (default 20, max 100), `q` (title or company, case-insensitive), `location` (case-insensitive contains), `source` (exact), `postedWithinHours` (default 24, max 24). Returns `items`, `page`, `pageSize`, `totalCount`; each item has a plain-text `descriptionExcerpt` (first 300 characters). Out-of-range values return 400 (validation problem details).
+- `GET /api/jobs`: recent jobs, newest first (`postedAt` descending, then `id`). Query: `page` (default 1), `pageSize` (default 20, max 100), `q` (title or company, case-insensitive), `location` (case-insensitive contains), `source` (exact), `postedWithinHours` (default `JobFetch:MaxAgeDays * 24`, so 168; max 720; pass 24 for "new today"). Returns `items`, `page`, `pageSize`, `totalCount`; each item has a plain-text `descriptionExcerpt` (first 300 characters). Out-of-range values return 400 (validation problem details).
 - `GET /api/jobs/{id}`: one job including the full `description` as stored from the source, or 404.
 
 ## Job fetching (`Sloffer.Jobs`)
 
-`JobFetchService` runs a cycle every `JobFetch:CycleDelay`. Each cycle calls every registered `IJobSource` whose `MinInterval` has elapsed since its last fetch (successful or failed; there are no retries), asks for listings from the last 24 hours, drops anything older, and inserts only listings not already stored (unique per `Source` + `ExternalId`).
+`JobFetchService` runs a cycle every `JobFetch:CycleDelay`. Each cycle calls every registered `IJobSource` whose `MinInterval` has elapsed since its last fetch (successful or failed; there are no retries), asks for listings posted within the age window (`JobFetch:MaxAgeDays`, default 7 days), drops anything older, and inserts only listings not already stored (unique per `Source` + `ExternalId`).
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
+| `JobFetch:MaxAgeDays` | `7` | Age window in days (1-30): sources are asked for listings since now minus this window and older listings are dropped. Jobs already stored are never deleted or changed when they age out. The API reads the same key for its default `postedWithinHours`, so set it for both `Sloffer.Api` and `Sloffer.Jobs` (or use the env var `JobFetch__MaxAgeDays`). |
 | `JobFetch:CycleDelay` | `00:05:00` | Pause between cycles. |
 | `JobFetch:MinInterval` | `01:00:00` | Minimum time between two fetches of the same source. |
 | `JobFetch:Sources:<Name>:MinInterval` | (global) | Per-source override, keyed by `IJobSource.Name`. |

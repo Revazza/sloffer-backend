@@ -18,6 +18,39 @@ public sealed class JobFetchServiceTests
         Assert.Equal(TimeSpan.FromMinutes(60), options.MinInterval);
         Assert.Equal(TimeSpan.FromMinutes(60), options.GetMinInterval("any-source"));
         Assert.Equal(TimeSpan.FromMinutes(5), options.CycleDelay);
+        Assert.Equal(7, options.MaxAgeDays);
+        Assert.Equal(TimeSpan.FromDays(7), options.MaxAge);
+    }
+
+    [Theory]
+    [InlineData("1")]
+    [InlineData("14")]
+    [InlineData("30")]
+    public void AddJobFetching_binds_MaxAgeDays_within_1_to_30(string value)
+    {
+        using var services = CreateServices(TimeProvider.System, [], new Dictionary<string, string?>
+        {
+            ["JobFetch:MaxAgeDays"] = value,
+        });
+
+        var options = services.GetRequiredService<IOptions<JobFetchOptions>>().Value;
+
+        Assert.Equal(int.Parse(value, System.Globalization.CultureInfo.InvariantCulture), options.MaxAgeDays);
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("-1")]
+    [InlineData("31")]
+    public void AddJobFetching_with_MaxAgeDays_outside_1_to_30_fails_validation_with_clear_message(string value)
+    {
+        using var services = CreateServices(TimeProvider.System, [], new Dictionary<string, string?>
+        {
+            ["JobFetch:MaxAgeDays"] = value,
+        });
+
+        var error = Assert.Throws<OptionsValidationException>(() => services.GetRequiredService<IOptions<JobFetchOptions>>().Value);
+        Assert.Contains("JobFetch:MaxAgeDays must be between 1 and 30 (days).", error.Failures);
     }
 
     [Fact]

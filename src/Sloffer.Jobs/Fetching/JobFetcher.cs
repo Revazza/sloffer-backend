@@ -19,7 +19,8 @@ public sealed record SourceFetchResult(string Source, SourceFetchStatus Status, 
 
 /// <summary>
 /// Runs one fetch cycle over every registered <see cref="IJobSource"/>: rate-limits each source by its
-/// <c>MinInterval</c>, drops listings older than <see cref="MaxAge"/>, and inserts only new (Source, ExternalId) pairs.
+/// <c>MinInterval</c>, drops listings older than the age window (<see cref="JobFetchOptions.MaxAgeDays"/>), and
+/// inserts only new (Source, ExternalId) pairs. Stored jobs are never changed or deleted when they age out.
 /// Singleton: it remembers when each source was last fetched (in memory).
 /// </summary>
 public sealed class JobFetcher(
@@ -29,9 +30,6 @@ public sealed class JobFetcher(
     TimeProvider time,
     ILogger<JobFetcher> logger)
 {
-    /// <summary>Only listings posted within this window are requested and stored.</summary>
-    public static readonly TimeSpan MaxAge = TimeSpan.FromHours(24);
-
     private readonly Dictionary<string, DateTimeOffset> _lastRuns = new(StringComparer.OrdinalIgnoreCase);
     private readonly SemaphoreSlim _cycleLock = new(1, 1);
 
@@ -73,7 +71,8 @@ public sealed class JobFetcher(
 
         // Recorded before the call, so a failing source also waits a full MinInterval (no retry loop).
         _lastRuns[name] = now;
-        var since = now - MaxAge;
+        // Only listings posted within the age window are requested and stored.
+        var since = now - settings.MaxAge;
 
         try
         {
