@@ -15,6 +15,12 @@ public sealed class JobFetchOptions
 
     public TimeSpan MaxAge => TimeSpan.FromDays(MaxAgeDays);
 
+    /// <summary>
+    /// On worker startup, compute <c>DedupKey</c> and <c>DuplicateOfId</c> for stored rows that have no key yet
+    /// (see <see cref="Dedup.JobDedupBackfillService"/>). Default false.
+    /// </summary>
+    public bool BackfillDedupOnStartup { get; set; }
+
     /// <summary>Pause between fetch cycles. Each cycle only calls sources whose <c>MinInterval</c> has elapsed.</summary>
     public TimeSpan CycleDelay { get; set; } = TimeSpan.FromMinutes(5);
 
