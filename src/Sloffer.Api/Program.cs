@@ -1,7 +1,9 @@
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Sloffer.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.TryAddSingleton(TimeProvider.System);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddSlofferData(builder.Configuration);
