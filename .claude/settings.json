@@ -4,8 +4,7 @@
     "allow": [
       "Bash",
       "Edit",
-      "Write",
-      "mcp__claude_ai_ClickUp"
+      "Write"
     ],
     "deny": [
       "Bash(git push --force:*)",
