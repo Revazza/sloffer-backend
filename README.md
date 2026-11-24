@@ -46,3 +46,18 @@ Defaults live in `JobFetchOptions`; override them in `src/Sloffer.Jobs/appsettin
 | `JobFetch:Jobicy:Industry` | `engineering` | Industry filter; empty = none. |
 | `JobFetch:Jobicy:MinInterval` | `01:00:00` | Time between fetches; lower values fail at startup. |
 | `JobFetch:Jobicy:Timeout` | `00:00:30` | HTTP request timeout. |
+
+## Job scoring (`Sloffer.Jobs/Matching`)
+
+`JobScorer` gives every new job a 0-100 fit score with plain-language reasons when it is inserted, using deterministic rules (no AI, no network). The result is stored on the job as `Score`, `ScoreReasons` (jsonb string array), `ScoreVersion` and `ScoredAt`. Rows stored before scoring existed stay null until rescored.
+
+- **Hard rules** (any failure gives `0` with one reason per failed rule): mentions .NET (`.NET`, `dotnet`, `C#`, `ASP.NET`); location in EMEA or remote/worldwide/anywhere, and not only non-EMEA regions (an empty location passes only if the title or description says remote); title has no excluded seniority word (junior, intern, staff, principal, head of, director, ...).
+- **Soft rules** (start at `BaseScore` 40, clamp 0-100, one reason each): .NET/C# in title +15; senior +5, mid/medior/regular +10, lead -10, no level word +5; domain fintech/payments/banking/... +12 or marketplace/travel/booking/e-commerce +6 (larger only); stack matches +3 each (max +15); gaps (Kubernetes, AWS, Azure, Terraform, React/Angular/Vue) -3 each (max -12); visa sponsorship or relocation +8; remote in EMEA +6; largest "N+ years": N <= 5 +5, 6-7 0, >= 8 -15.
+
+Every weight and term list is in `JobScoringOptions` (section `JobScoring`). A term list set in config replaces the default list (`JobScoringDefaults`); entries match case-insensitively on word boundaries and may list synonyms as `"SQL Server|MSSQL"`. When the rules change, bump `JobScorer.Version`.
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `JobScoring:RescoreOnStartup` | `false` | On worker startup, rescore every row whose `ScoreVersion` is not the current version (including unscored rows), before the first fetch cycle. |
+| `JobScoring:RescoreBatchSize` | `500` | Rows per rescore batch. |
+| `JobScoring:BaseScore` | `40` | Starting score for jobs that pass the hard rules. |
