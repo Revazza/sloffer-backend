@@ -27,3 +27,15 @@ See `CLAUDE.md` for structure, all commands and conventions.
 | `JobFetch:Sources:<Name>:MinInterval` | (global) | Per-source override, keyed by `IJobSource.Name`. |
 
 Defaults live in `JobFetchOptions`; override them in `src/Sloffer.Jobs/appsettings*.json` or env vars (`JobFetch__MinInterval`). To add a source, implement `IJobSource` and register it in `src/Sloffer.Jobs/Program.cs`.
+
+### Sources
+
+**Jobicy** (`jobicy`, `Sources/Jobicy`): [public remote-jobs API](https://github.com/Jobicy/remote-jobs-api), no auth, called through the RestEase client `IJobicyApi` (`GET https://jobicy.com/api/v2/remote-jobs`). One request per fetch, no pagination. Jobicy has no date filter, so listings are filtered by `pubDate`. Jobicy asks for at most one poll per hour: the source's interval is forced to at least `01:00:00`, whatever `JobFetch:Sources:jobicy:MinInterval` says. HTTP errors (429, 5xx) throw `HttpRequestException`, so the fetcher logs and skips the source until its next run. Stored jobs keep `Source = jobicy` and the canonical Jobicy `url` (attribution).
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `JobFetch:Jobicy:Count` | `100` | Listings per request (1-200). |
+| `JobFetch:Jobicy:Geo` | `europe` | Region filter (`europe`, `usa`, `anywhere`, ...); empty = none. |
+| `JobFetch:Jobicy:Industry` | `engineering` | Industry filter; empty = none. |
+| `JobFetch:Jobicy:MinInterval` | `01:00:00` | Time between fetches; lower values fail at startup. |
+| `JobFetch:Jobicy:Timeout` | `00:00:30` | HTTP request timeout. |
