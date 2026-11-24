@@ -44,4 +44,16 @@ public sealed class Job
 
     /// <summary>When the job was last scored (UTC). Null until scored.</summary>
     public DateTimeOffset? ScoredAt { get; set; }
+
+    /// <summary>
+    /// SHA-256 hex of the normalized "company|title" (see JobDedup in Sloffer.Jobs). Set for every new row;
+    /// null only for rows stored before de-duplication existed, until the backfill runs.
+    /// </summary>
+    public string? DedupKey { get; set; }
+
+    /// <summary>
+    /// The original job this one duplicates (same <see cref="DedupKey"/>, posted within the age window, possibly on
+    /// another source). Null for originals. Duplicates are stored, scored and never deleted.
+    /// </summary>
+    public Guid? DuplicateOfId { get; set; }
 }

@@ -32,6 +32,15 @@ public sealed class JobConfiguration : IEntityTypeConfiguration<Job>
         builder.HasIndex(j => new { j.Source, j.ExternalId }).IsUnique();
         builder.HasIndex(j => j.PostedAt);
         builder.HasIndex(j => j.Score);
+
+        builder.Property(j => j.DedupKey).HasMaxLength(64);
+        builder.HasIndex(j => j.DedupKey);
+
+        builder.HasOne<Job>()
+            .WithMany()
+            .HasForeignKey(j => j.DuplicateOfId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(j => j.DuplicateOfId);
     }
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.General);
