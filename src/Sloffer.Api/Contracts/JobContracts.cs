@@ -1,4 +1,6 @@
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using Sloffer.Data;
 
 namespace Sloffer.Api.Contracts;
 
@@ -6,7 +8,9 @@ namespace Sloffer.Api.Contracts;
 public sealed record JobListQuery
 {
     public const int MaxPageSize = 100;
-    public const int MaxPostedWithinHours = 24;
+
+    /// <summary>30 days, the largest allowed <c>JobFetch:MaxAgeDays</c>.</summary>
+    public const int MaxPostedWithinHours = JobAgeWindow.MaxMaxAgeDays * 24;
 
     /// <summary>1-based page number.</summary>
     [Range(1, int.MaxValue, ErrorMessage = "page must be 1 or greater.")]
@@ -25,9 +29,13 @@ public sealed record JobListQuery
     /// <summary>Exact source name, e.g. "jobicy".</summary>
     public string? Source { get; init; }
 
-    /// <summary>Only jobs posted within this many hours, 1 to 24.</summary>
-    [Range(1, MaxPostedWithinHours, ErrorMessage = "postedWithinHours must be between 1 and 24.")]
-    public int PostedWithinHours { get; init; } = MaxPostedWithinHours;
+    /// <summary>
+    /// Only jobs posted within this many hours, 1 to 720. Defaults to the age window (<c>JobFetch:MaxAgeDays</c> * 24,
+    /// 168 with the default 7 days). Pass 24 for "new today".
+    /// </summary>
+    [Description("Only jobs posted within this many hours, 1 to 720. Defaults to the job age window (JobFetch:MaxAgeDays * 24, 168 by default). Pass 24 for jobs posted in the last day.")]
+    [Range(1, MaxPostedWithinHours, ErrorMessage = "postedWithinHours must be between 1 and 720.")]
+    public int? PostedWithinHours { get; init; }
 }
 
 /// <summary>One page of jobs, newest first.</summary>
