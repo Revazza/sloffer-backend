@@ -36,12 +36,17 @@ public sealed record JobListQuery
     [Description("Only jobs posted within this many hours, 1 to 720. Defaults to the job age window (JobFetch:MaxAgeDays * 24, 168 by default). Pass 24 for jobs posted in the last day.")]
     [Range(1, MaxPostedWithinHours, ErrorMessage = "postedWithinHours must be between 1 and 720.")]
     public int? PostedWithinHours { get; init; }
+
+    /// <summary>Include jobs marked as duplicates of another job (same company and title, possibly on another source). Default false.</summary>
+    [Description("Include jobs marked as duplicates of another job (same company and title, possibly from another source). Default false: duplicates are hidden and not counted in totalCount.")]
+    public bool IncludeDuplicates { get; init; }
 }
 
 /// <summary>One page of jobs, newest first.</summary>
 public sealed record JobListResponse(IReadOnlyList<JobListItem> Items, int Page, int PageSize, int TotalCount);
 
 /// <param name="DescriptionExcerpt">First 300 characters of the description as plain text (HTML tags stripped), or null.</param>
+/// <param name="DuplicateOfId">Id of the original job when this one is a duplicate, otherwise null. Only set on items returned with <c>includeDuplicates=true</c>.</param>
 public sealed record JobListItem(
     Guid Id,
     string Source,
@@ -52,7 +57,8 @@ public sealed record JobListItem(
     string? EmploymentTypes,
     string? Level,
     DateTimeOffset PostedAt,
-    string? DescriptionExcerpt);
+    string? DescriptionExcerpt,
+    Guid? DuplicateOfId);
 
 /// <param name="Description">Description as returned by the source (HTML or text). Data only.</param>
 public sealed record JobDetailResponse(

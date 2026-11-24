@@ -13,7 +13,8 @@ public sealed class JobsController(SlofferDbContext db, TimeProvider time, IOpti
 {
     /// <summary>
     /// Recent jobs, newest first (PostedAt descending, then Id), filtered and paged in the database.
-    /// By default lists the whole job age window (<c>JobFetch:MaxAgeDays</c>, 7 days by default).
+    /// By default lists the whole job age window (<c>JobFetch:MaxAgeDays</c>, 7 days by default) and hides duplicates
+    /// (<c>includeDuplicates=true</c> shows them, with <c>duplicateOfId</c> pointing at the original).
     /// </summary>
     [HttpGet]
     [ProducesResponseType<JobListResponse>(StatusCodes.Status200OK)]
@@ -24,6 +25,9 @@ public sealed class JobsController(SlofferDbContext db, TimeProvider time, IOpti
         var postedSince = time.GetUtcNow().AddHours(-postedWithinHours);
 
         var jobs = db.Jobs.AsNoTracking().Where(j => j.PostedAt >= postedSince);
+
+        if (!query.IncludeDuplicates)
+            jobs = jobs.Where(j => j.DuplicateOfId == null);
 
         if (!string.IsNullOrWhiteSpace(query.Source))
             jobs = jobs.Where(j => j.Source == query.Source);
@@ -50,13 +54,14 @@ public sealed class JobsController(SlofferDbContext db, TimeProvider time, IOpti
             .Select(j => new
             {
                 j.Id, j.Source, j.Url, j.Title, j.Company, j.Location, j.EmploymentTypes, j.Level, j.PostedAt, j.Description,
+                j.DuplicateOfId,
             })
             .ToListAsync(cancellationToken);
 
         var items = page
             .Select(j => new JobListItem(
                 j.Id, j.Source, j.Url, j.Title, j.Company, j.Location, j.EmploymentTypes, j.Level, j.PostedAt,
-                HtmlText.Excerpt(j.Description)))
+                HtmlText.Excerpt(j.Description), j.DuplicateOfId))
             .ToList();
 
         return Ok(new JobListResponse(items, query.Page, query.PageSize, totalCount));
