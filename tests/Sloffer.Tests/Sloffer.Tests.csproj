@@ -21,6 +21,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="Jobs\**\Fixtures\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\Sloffer.Api\Sloffer.Api.csproj" />
     <ProjectReference Include="..\..\src\Sloffer.Data\Sloffer.Data.csproj" />
     <ProjectReference Include="..\..\src\Sloffer.Jobs\Sloffer.Jobs.csproj" />
