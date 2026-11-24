@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Sloffer.Data;
+using Sloffer.Jobs.Dedup;
 using Sloffer.Jobs.Matching;
 
 namespace Sloffer.Jobs.Fetching;
@@ -77,7 +78,7 @@ public sealed class JobFetcher(
         try
         {
             var fetched = await source.FetchRecentAsync(since, ct);
-            var inserted = await StoreAsync(db, name, fetched, since, now, ct);
+            var inserted = await StoreAsync(db, name, fetched, since, now, settings.MaxAge, ct);
 
             logger.LogInformation("Job source {Source}: fetched {Fetched}, inserted {Inserted}.", name, fetched.Count, inserted);
             return new SourceFetchResult(name, SourceFetchStatus.Succeeded, fetched.Count, inserted);
@@ -103,6 +104,7 @@ public sealed class JobFetcher(
         IReadOnlyList<FetchedJob> fetched,
         DateTimeOffset since,
         DateTimeOffset now,
+        TimeSpan maxAge,
         CancellationToken ct)
     {
         var recent = fetched
@@ -141,6 +143,9 @@ public sealed class JobFetcher(
 
         if (newJobs.Count == 0)
             return 0;
+
+        // Cross-source / repost de-duplication: duplicates are still stored and scored, just linked to the original.
+        await JobDeduplicator.AssignAsync(db, newJobs, maxAge, ct);
 
         db.Jobs.AddRange(newJobs);
         await db.SaveChangesAsync(ct);
