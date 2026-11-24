@@ -23,6 +23,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Sloffer.Api\Sloffer.Api.csproj" />
     <ProjectReference Include="..\..\src\Sloffer.Data\Sloffer.Data.csproj" />
+    <ProjectReference Include="..\..\src\Sloffer.Jobs\Sloffer.Jobs.csproj" />
   </ItemGroup>
 
 </Project>

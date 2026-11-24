@@ -1,10 +1,10 @@
 using Sloffer.Data;
-using Sloffer.Jobs;
+using Sloffer.Jobs.Fetching;
 
 var builder = Host.CreateApplicationBuilder(args);
 
 builder.Services.AddSlofferData(builder.Configuration);
-builder.Services.AddHostedService<DatabaseCheckService>();
-// Job-fetching services are added here as BackgroundServices once they exist.
+builder.Services.AddJobFetching(builder.Configuration);
+// Job sources (one IJobSource per website) are registered here once they exist.
 
 builder.Build().Run();
