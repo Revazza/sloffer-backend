@@ -291,8 +291,10 @@ public sealed class JobsEndpointTests(SlofferApiFactory factory)
         Assert.Equal(["200", "400"], ResponseCodes(list));
         Assert.Equal(["200", "404"], ResponseCodes(detail));
         var parameters = list.GetProperty("parameters").EnumerateArray().Select(p => p.GetProperty("name").GetString()).ToList();
-        foreach (var name in new[] { "Page", "PageSize", "Q", "Location", "Source", "PostedWithinHours" })
+        foreach (var name in new[] { "Page", "PageSize", "Q", "Location", "Source", "PostedWithinHours", "IncludeDuplicates" })
             Assert.Contains(parameters, p => string.Equals(p, name, StringComparison.OrdinalIgnoreCase));
+        var itemSchema = document.RootElement.GetProperty("components").GetProperty("schemas").GetProperty("JobListItem");
+        Assert.True(itemSchema.GetProperty("properties").TryGetProperty("duplicateOfId", out _));
         var postedWithinHours = list.GetProperty("parameters").EnumerateArray()
             .Single(p => string.Equals(p.GetProperty("name").GetString(), "PostedWithinHours", StringComparison.OrdinalIgnoreCase));
         Assert.Contains("JobFetch:MaxAgeDays * 24", postedWithinHours.GetProperty("description").GetString());
@@ -300,6 +302,42 @@ public sealed class JobsEndpointTests(SlofferApiFactory factory)
 
         static List<string> ResponseCodes(JsonElement operation) =>
             operation.GetProperty("responses").EnumerateObject().Select(r => r.Name).Order().ToList();
+    }
+
+    [Fact]
+    public async Task List_hides_duplicates_by_default_and_counts_only_originals()
+    {
+        var source = UniqueSource();
+        var original = NewJob(source, "original", Now.AddHours(-2));
+        var duplicate = NewJob(source, "duplicate", Now.AddHours(-1));
+        duplicate.DuplicateOfId = original.Id;
+        await SeedAsync(original);
+        await SeedAsync(duplicate);
+
+        var body = await ListAsync($"source={source}");
+
+        var item = Assert.Single(body.Items);
+        Assert.Equal("original", item.Title);
+        Assert.Null(item.DuplicateOfId);
+        Assert.Equal(1, body.TotalCount);
+    }
+
+    [Fact]
+    public async Task List_includeDuplicates_true_shows_duplicates_with_duplicateOfId()
+    {
+        var source = UniqueSource();
+        var original = NewJob(source, "original", Now.AddHours(-2));
+        var duplicate = NewJob(source, "duplicate", Now.AddHours(-1));
+        duplicate.DuplicateOfId = original.Id;
+        await SeedAsync(original);
+        await SeedAsync(duplicate);
+
+        var body = await ListAsync($"source={source}&includeDuplicates=true");
+
+        Assert.Equal(2, body.TotalCount);
+        var items = body.Items.ToDictionary(j => j.Title);
+        Assert.Null(items["original"].DuplicateOfId);
+        Assert.Equal(original.Id, items["duplicate"].DuplicateOfId);
     }
 
     private static string UniqueSource() => $"api-test-{Guid.NewGuid():N}";
