@@ -14,7 +14,7 @@ public sealed class JobFetcherTests
     public JobFetcherTests(SlofferApiFactory factory) => _ = factory;
 
     [Fact]
-    public async Task RunCycle_requests_jobs_posted_in_the_last_24_hours()
+    public async Task RunCycle_by_default_requests_jobs_posted_in_the_last_7_days()
     {
         var time = new ManualTimeProvider(Start);
         var source = FakeJobSource.Returning(UniqueSourceName());
@@ -22,29 +22,74 @@ public sealed class JobFetcherTests
 
         await services.GetRequiredService<JobFetcher>().RunCycleAsync(CancellationToken.None);
 
-        Assert.Equal([Start.AddHours(-24)], source.Calls);
+        Assert.Equal([Start.AddDays(-7)], source.Calls);
     }
 
     [Fact]
-    public async Task RunCycle_drops_jobs_posted_more_than_24_hours_ago()
+    public async Task RunCycle_by_default_drops_jobs_posted_more_than_7_days_ago()
     {
         var time = new ManualTimeProvider(Start);
         var name = UniqueSourceName();
         var source = FakeJobSource.Returning(name,
             Job(name, "fresh", Start.AddHours(-1)),
-            Job(name, "edge", Start.AddHours(-24)),
-            Job(name, "old", Start.AddHours(-24).AddSeconds(-1)),
-            Job(name, "ancient", Start.AddDays(-7)));
+            Job(name, "three-days", Start.AddDays(-3)),
+            Job(name, "edge", Start.AddDays(-7)),
+            Job(name, "old", Start.AddDays(-7).AddSeconds(-1)),
+            Job(name, "ancient", Start.AddDays(-30)));
         await using var services = CreateServices(time, [source]);
 
         var results = await services.GetRequiredService<JobFetcher>().RunCycleAsync(CancellationToken.None);
 
         var result = Assert.Single(results);
         Assert.Equal(SourceFetchStatus.Succeeded, result.Status);
-        Assert.Equal(4, result.Fetched);
-        Assert.Equal(2, result.Inserted);
+        Assert.Equal(5, result.Fetched);
+        Assert.Equal(3, result.Inserted);
         var stored = await StoredJobsAsync(services, name);
-        Assert.Equal(["edge", "fresh"], stored.Select(j => j.ExternalId));
+        Assert.Equal(["edge", "fresh", "three-days"], stored.Select(j => j.ExternalId));
+    }
+
+    [Fact]
+    public async Task RunCycle_uses_MaxAgeDays_from_config_for_request_and_filter()
+    {
+        var time = new ManualTimeProvider(Start);
+        var name = UniqueSourceName();
+        var source = FakeJobSource.Returning(name,
+            Job(name, "fresh", Start.AddHours(-1)),
+            Job(name, "edge", Start.AddDays(-2)),
+            Job(name, "old", Start.AddDays(-2).AddSeconds(-1)));
+        await using var services = CreateServices(time, [source], new Dictionary<string, string?>
+        {
+            ["JobFetch:MaxAgeDays"] = "2",
+        });
+
+        var result = Assert.Single(await services.GetRequiredService<JobFetcher>().RunCycleAsync(CancellationToken.None));
+
+        Assert.Equal([Start.AddDays(-2)], source.Calls);
+        Assert.Equal(2, result.Inserted);
+        Assert.Equal(["edge", "fresh"], (await StoredJobsAsync(services, name)).Select(j => j.ExternalId));
+    }
+
+    [Fact]
+    public async Task RunCycle_never_changes_or_deletes_stored_jobs_that_aged_out_of_the_window()
+    {
+        var time = new ManualTimeProvider(Start);
+        var name = UniqueSourceName();
+        var source = FakeJobSource.Returning(name, Job(name, "kept", Start.AddDays(-1)));
+        await using var services = CreateServices(time, [source]);
+        var fetcher = services.GetRequiredService<JobFetcher>();
+        await fetcher.RunCycleAsync(CancellationToken.None);
+        var before = Assert.Single(await StoredJobsAsync(services, name));
+
+        time.Advance(TimeSpan.FromDays(10));
+        var later = Assert.Single(await fetcher.RunCycleAsync(CancellationToken.None));
+
+        Assert.Equal(0, later.Inserted);
+        var after = Assert.Single(await StoredJobsAsync(services, name));
+        Assert.Equal(before.Id, after.Id);
+        Assert.Equal(before.PostedAt, after.PostedAt);
+        Assert.Equal(before.FetchedAt, after.FetchedAt);
+        Assert.Equal(before.Score, after.Score);
+        Assert.Equal(before.ScoredAt, after.ScoredAt);
     }
 
     [Fact]
@@ -218,7 +263,7 @@ public sealed class JobFetcherTests
         Assert.Equal(SourceFetchStatus.Skipped, Assert.Single(immediately).Status);
         Assert.Equal(SourceFetchStatus.Skipped, Assert.Single(after59Minutes).Status);
         Assert.Equal(SourceFetchStatus.Succeeded, Assert.Single(after60Minutes).Status);
-        Assert.Equal([Start.AddHours(-24), Start.AddMinutes(60).AddHours(-24)], source.Calls);
+        Assert.Equal([Start.AddDays(-7), Start.AddMinutes(60).AddDays(-7)], source.Calls);
     }
 
     [Fact]
