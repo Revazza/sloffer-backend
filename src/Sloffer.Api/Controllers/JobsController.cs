@@ -48,6 +48,9 @@ public sealed class JobsController(SlofferDbContext db, TimeProvider time, IOpti
         if (query.MinScore > 0)
             jobs = jobs.Where(j => j.Score == null || j.Score >= query.MinScore);
 
+        if (query.HideViewed)
+            jobs = jobs.Where(j => j.ViewedAt == null);
+
         var totalCount = await jobs.CountAsync(cancellationToken);
 
         var ordered = query.Sort == JobListQuery.SortByPosted
@@ -60,14 +63,14 @@ public sealed class JobsController(SlofferDbContext db, TimeProvider time, IOpti
             .Select(j => new
             {
                 j.Id, j.Source, j.Url, j.Title, j.Company, j.Location, j.EmploymentTypes, j.Level, j.PostedAt, j.Description,
-                j.DuplicateOfId, j.Score, j.ScoreReasons,
+                j.DuplicateOfId, j.Score, j.ScoreReasons, j.ViewedAt,
             })
             .ToListAsync(cancellationToken);
 
         var items = page
             .Select(j => new JobListItem(
                 j.Id, j.Source, j.Url, j.Title, j.Company, j.Location, j.EmploymentTypes, j.Level, j.PostedAt,
-                HtmlText.Excerpt(j.Description), j.DuplicateOfId, j.Score, j.ScoreReasons ?? []))
+                HtmlText.Excerpt(j.Description), j.DuplicateOfId, j.Score, j.ScoreReasons ?? [], j.ViewedAt))
             .ToList();
 
         return Ok(new JobListResponse(items, query.Page, query.PageSize, totalCount));
@@ -85,7 +88,7 @@ public sealed class JobsController(SlofferDbContext db, TimeProvider time, IOpti
             .Select(j => new
             {
                 j.Id, j.Source, j.ExternalId, j.Url, j.Title, j.Company, j.Location, j.EmploymentTypes, j.Level,
-                j.Description, j.PostedAt, j.FetchedAt, j.Score, j.ScoreReasons,
+                j.Description, j.PostedAt, j.FetchedAt, j.Score, j.ScoreReasons, j.ViewedAt,
             })
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -94,6 +97,34 @@ public sealed class JobsController(SlofferDbContext db, TimeProvider time, IOpti
 
         return Ok(new JobDetailResponse(
             job.Id, job.Source, job.ExternalId, job.Url, job.Title, job.Company, job.Location, job.EmploymentTypes,
-            job.Level, job.Description, job.PostedAt, job.FetchedAt, job.Score, job.ScoreReasons ?? []));
+            job.Level, job.Description, job.PostedAt, job.FetchedAt, job.Score, job.ScoreReasons ?? [], job.ViewedAt));
+    }
+
+    /// <summary>Marks the job as viewed (keeps the first viewed time if it was already viewed).</summary>
+    [HttpPost("{id:guid}/viewed")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> MarkViewed(Guid id, CancellationToken cancellationToken)
+    {
+        if (!await db.Jobs.AnyAsync(j => j.Id == id, cancellationToken))
+            return NotFound();
+
+        var now = time.GetUtcNow();
+        await db.Jobs
+            .Where(j => j.Id == id && j.ViewedAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(j => j.ViewedAt, now), cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>Marks the job as not viewed.</summary>
+    [HttpDelete("{id:guid}/viewed")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UnmarkViewed(Guid id, CancellationToken cancellationToken)
+    {
+        var updated = await db.Jobs
+            .Where(j => j.Id == id)
+            .ExecuteUpdateAsync(s => s.SetProperty(j => j.ViewedAt, (DateTimeOffset?)null), cancellationToken);
+        return updated == 0 ? NotFound() : NoContent();
     }
 }

@@ -56,4 +56,7 @@ public sealed class Job
     /// another source). Null for originals. Duplicates are stored, scored and never deleted.
     /// </summary>
     public Guid? DuplicateOfId { get; set; }
+
+    /// <summary>When the owner first opened this job in the UI (UTC), so he does not look at or apply to it twice. Null if not viewed.</summary>
+    public DateTimeOffset? ViewedAt { get; set; }
 }

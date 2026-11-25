@@ -54,6 +54,10 @@ public sealed record JobListQuery
     [RegularExpression("^(score|posted)$", ErrorMessage = "sort must be 'score' or 'posted'.")]
     public string Sort { get; init; } = SortByScore;
 
+    /// <summary>Hide jobs the owner already opened (<c>viewedAt</c> set). Default false.</summary>
+    [Description("Hide jobs already viewed (viewedAt set). Default false.")]
+    public bool HideViewed { get; init; }
+
     public const string SortByScore = "score";
     public const string SortByPosted = "posted";
 }
@@ -65,6 +69,7 @@ public sealed record JobListResponse(IReadOnlyList<JobListItem> Items, int Page,
 /// <param name="DuplicateOfId">Id of the original job when this one is a duplicate, otherwise null. Only set on items returned with <c>includeDuplicates=true</c>.</param>
 /// <param name="Score">Rule-based fit score, 0-100 (0 = failed a hard rule), or null when not scored yet.</param>
 /// <param name="ScoreReasons">Plain-language reasons behind the score. Empty when not scored yet.</param>
+/// <param name="ViewedAt">When the job was first opened in the UI, or null.</param>
 public sealed record JobListItem(
     Guid Id,
     string Source,
@@ -78,11 +83,13 @@ public sealed record JobListItem(
     string? DescriptionExcerpt,
     Guid? DuplicateOfId,
     int? Score,
-    IReadOnlyList<string> ScoreReasons);
+    IReadOnlyList<string> ScoreReasons,
+    DateTimeOffset? ViewedAt);
 
 /// <param name="Description">Description as returned by the source (HTML or text). Data only.</param>
 /// <param name="Score">Rule-based fit score, 0-100 (0 = failed a hard rule), or null when not scored yet.</param>
 /// <param name="ScoreReasons">Plain-language reasons behind the score. Empty when not scored yet.</param>
+/// <param name="ViewedAt">When the job was first opened in the UI, or null.</param>
 public sealed record JobDetailResponse(
     Guid Id,
     string Source,
@@ -97,4 +104,5 @@ public sealed record JobDetailResponse(
     DateTimeOffset PostedAt,
     DateTimeOffset FetchedAt,
     int? Score,
-    IReadOnlyList<string> ScoreReasons);
+    IReadOnlyList<string> ScoreReasons,
+    DateTimeOffset? ViewedAt);
