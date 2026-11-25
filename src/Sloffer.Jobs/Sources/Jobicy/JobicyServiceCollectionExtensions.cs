@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using RestEase.HttpClientFactory;
@@ -21,12 +22,15 @@ public static class JobicyServiceCollectionExtensions
     {
         services.AddOptions<JobicyOptions>()
             .Bind(configuration.GetSection(JobicyOptions.SectionName))
-            .Validate(o => o.IsValid(), "JobFetch:Jobicy: Count must be 1-200, MinInterval >= 01:00:00 and Timeout > 0.")
+            .Validate(o => o.IsValid(),
+                "JobFetch:Jobicy: Count must be 1-200, Queries at most 5, each with Geo, Industry or Tag (Tag 3-50 characters), "
+                + "DelayBetweenRequests 00:00:00-00:01:00, MinInterval >= 01:00:00 and Timeout > 0.")
             .ValidateOnStart();
 
         services.AddOptions<JobFetchOptions>()
             .PostConfigure<IOptionsMonitor<JobicyOptions>>((fetch, jobicy) => EnforceMinInterval(fetch, jobicy.CurrentValue));
 
+        services.TryAddSingleton(TimeProvider.System);
         services.AddScoped<IJobSource, JobicyJobSource>();
 
         return services
