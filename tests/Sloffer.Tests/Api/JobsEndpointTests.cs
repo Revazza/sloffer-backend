@@ -494,6 +494,89 @@ public sealed class JobsEndpointTests(SlofferApiFactory factory)
         Assert.Empty(unscoredBody.ScoreReasons);
     }
 
+    [Fact]
+    public async Task MarkViewed_sets_viewedAt_once_and_list_and_detail_return_it()
+    {
+        var source = UniqueSource();
+        var job = NewJob(source, "seen", Now.AddHours(-1), score: 80);
+        await SeedAsync(job, NewJob(source, "unseen", Now.AddHours(-2), score: 80));
+        using var client = factory.CreateClient();
+
+        var first = await client.PostAsync($"/api/jobs/{job.Id}/viewed", null);
+        var firstViewedAt = (await client.GetFromJsonAsync<JobDetailResponse>($"/api/jobs/{job.Id}"))?.ViewedAt;
+        var second = await client.PostAsync($"/api/jobs/{job.Id}/viewed", null);
+        var detail = await client.GetFromJsonAsync<JobDetailResponse>($"/api/jobs/{job.Id}");
+        var list = await ListAsync($"source={source}");
+
+        Assert.Equal(HttpStatusCode.NoContent, first.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, second.StatusCode);
+        Assert.NotNull(firstViewedAt);
+        Assert.Equal(firstViewedAt, detail?.ViewedAt);
+        var items = list.Items.ToDictionary(j => j.Title);
+        Assert.Equal(firstViewedAt, items["seen"].ViewedAt);
+        Assert.Null(items["unseen"].ViewedAt);
+    }
+
+    [Fact]
+    public async Task List_hideViewed_hides_viewed_jobs_and_counts_only_the_rest()
+    {
+        var source = UniqueSource();
+        var seen = NewJob(source, "seen", Now.AddHours(-1), score: 80);
+        await SeedAsync(seen, NewJob(source, "unseen", Now.AddHours(-2), score: 80));
+        using var client = factory.CreateClient();
+        await client.PostAsync($"/api/jobs/{seen.Id}/viewed", null);
+
+        var hidden = await ListAsync($"source={source}&hideViewed=true");
+        var shown = await ListAsync($"source={source}");
+
+        Assert.Equal(["unseen"], hidden.Items.Select(j => j.Title));
+        Assert.Equal(1, hidden.TotalCount);
+        Assert.Equal(2, shown.TotalCount);
+    }
+
+    [Fact]
+    public async Task UnmarkViewed_clears_viewedAt()
+    {
+        var source = UniqueSource();
+        var job = NewJob(source, "seen", Now.AddHours(-1), score: 80);
+        await SeedAsync(job);
+        using var client = factory.CreateClient();
+        await client.PostAsync($"/api/jobs/{job.Id}/viewed", null);
+
+        var response = await client.DeleteAsync($"/api/jobs/{job.Id}/viewed");
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Null((await client.GetFromJsonAsync<JobDetailResponse>($"/api/jobs/{job.Id}"))?.ViewedAt);
+    }
+
+    [Fact]
+    public async Task Viewed_endpoints_return_404_for_unknown_jobs()
+    {
+        using var client = factory.CreateClient();
+        var id = Guid.NewGuid();
+
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsync($"/api/jobs/{id}/viewed", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.DeleteAsync($"/api/jobs/{id}/viewed")).StatusCode);
+    }
+
+    [Fact]
+    public async Task OpenApi_describes_viewed_endpoints_and_fields()
+    {
+        using var client = factory.CreateClient();
+
+        using var document = JsonDocument.Parse(await client.GetStringAsync("/openapi/v1.json"));
+
+        var viewed = document.RootElement.GetProperty("paths").GetProperty("/api/jobs/{id}/viewed");
+        Assert.True(viewed.TryGetProperty("post", out _));
+        Assert.True(viewed.TryGetProperty("delete", out _));
+        var schemas = document.RootElement.GetProperty("components").GetProperty("schemas");
+        Assert.True(schemas.GetProperty("JobListItem").GetProperty("properties").TryGetProperty("viewedAt", out _));
+        Assert.True(schemas.GetProperty("JobDetailResponse").GetProperty("properties").TryGetProperty("viewedAt", out _));
+        var parameters = document.RootElement.GetProperty("paths").GetProperty("/api/jobs").GetProperty("get")
+            .GetProperty("parameters").EnumerateArray().Select(p => p.GetProperty("name").GetString());
+        Assert.Contains(parameters, p => string.Equals(p, "HideViewed", StringComparison.OrdinalIgnoreCase));
+    }
+
     private static string UniqueSource() => $"api-test-{Guid.NewGuid():N}";
 
     private static Job NewJob(
