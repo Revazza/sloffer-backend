@@ -1,0 +1,54 @@
+{
+  "00-warning": "Remotive main domain moved to remotive.com ! Please make your API calls on remotive.com/api/remote-jobs instead of remotive.io now ;)",
+  "0-legal-notice": "Legal warning - Please link back to the URL found on Remotive AND mention Remotive as a source.",
+  "job-count": 4,
+  "total-job-count": 4,
+  "jobs": [
+    {
+      "id": 2090001,
+      "url": "https://remotive.com/remote-jobs/software-dev/senior-net-engineer-2090001",
+      "title": "Senior .NET Engineer",
+      "company_name": "Example Payments",
+      "company_logo": "https://remotive.com/job/2090001/logo",
+      "category": "Software Development",
+      "tags": ["c#", "asp.net", "postgresql"],
+      "job_type": "full_time",
+      "publication_date": "2026-11-24T09:30:00",
+      "candidate_required_location": "Europe",
+      "salary": "",
+      "description": "<p>Build payment APIs in C# and ASP.NET Core.</p>"
+    },
+    {
+      "id": 2090002,
+      "url": "https://remotive.com/remote-jobs/software-dev/senior-react-developer-2090002",
+      "title": "Senior React Developer",
+      "company_name": "Example Frontend",
+      "category": "Software Development",
+      "tags": ["react", "typescript"],
+      "job_type": "contract",
+      "publication_date": "2026-11-24T08:00:00",
+      "candidate_required_location": "Worldwide",
+      "description": "<p>React and TypeScript.</p>"
+    },
+    {
+      "id": 2090003,
+      "url": "https://remotive.com/remote-jobs/software-dev/backend-developer-2090003",
+      "title": "Backend Developer",
+      "company_name": "Example Old",
+      "category": "Software Development",
+      "tags": ["dotnet"],
+      "job_type": "full_time",
+      "publication_date": "2026-11-01T10:00:00",
+      "candidate_required_location": "Europe",
+      "description": "<p>Services in .NET.</p>"
+    },
+    {
+      "id": 2090004,
+      "url": "",
+      "title": "Broken listing",
+      "company_name": "Example Broken",
+      "publication_date": "2026-11-24T10:00:00",
+      "description": "<p>C#</p>"
+    }
+  ]
+}
