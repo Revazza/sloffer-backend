@@ -12,7 +12,7 @@ Goal: the list shows only **Excellent** jobs (75+) that really fit, **at most 10
 ## 2. Viewed (backend + frontend)
 - `Job.ViewedAt` (nullable, migration). `POST /api/jobs/{id}/viewed` marks it (204), `DELETE` unmarks (204), 404 for unknown ids.
 - List and detail return `viewedAt`. `GET /api/jobs?hideViewed=true` hides viewed jobs.
-- Frontend: opening a job's detail page marks it viewed; the list shows a "Viewed" chip; a "Hide viewed" filter; "Mark as not viewed" on the detail page.
+- Frontend: clicking the link to the original posting (list or detail page) marks it viewed (changed at Sandro's request; opening the detail page alone does not); the list shows a "Viewed" chip; a "Hide viewed" filter; "Mark as viewed / not viewed" on the detail page.
 
 ## 3. Sources (backend, one PR each, pattern of `Sources/Jobicy`)
 - **Remotive** (`https://remotive.com/api/remote-jobs?category=software-dev`): its text search is fuzzy, so fetch the category and let the scorer filter. Terms: link back to the job URL, name Remotive as the source, call it only a few times a day (MinInterval 6 h).

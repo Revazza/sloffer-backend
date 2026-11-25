@@ -14,7 +14,7 @@ Goal of the product: find .NET-oriented jobs in EMEA that fit Sandro (see Produc
 | 4c | Scoring v3, strict: English listings only, no required German/Dutch/French, other-language titles rejected, polyglot penalty, on-site without relocation capped at 70. Golden examples first. | `docs/next/strict-matching-v3.md` section 1 | done (#19) |
 | 4d | Viewed: `ViewedAt` + mark/unmark endpoints + `hideViewed` filter (backend) | `docs/next/strict-matching-v3.md` section 2 | done (#20) |
 | 4e | Remotive source, then Remote OK source (one PR each) | `docs/next/strict-matching-v3.md` section 3 | done (Remotive #21, Remote OK #22) |
-| 4f | Frontend: Excellent-only default, 100 per day, band colours, source badges, Viewed (sloffer-frontend) | `docs/next/strict-matching-v3.md` sections 2 and 4 | todo |
+| 4f | Frontend: Excellent-only default, 100 per day, band colours, source badges, Viewed (sloffer-frontend) | `docs/next/strict-matching-v3.md` sections 2 and 4 | done (sloffer-frontend#2, #3) |
 | 5 | Frontend MVP in `sloffer-frontend` | `docs/next/frontend-mvp.md` | done (sloffer-frontend#1) |
 | 6 | AI scoring of the top N jobs per day | none | later (do not start without asking Sandro) |
 | 7 | Himalayas source (needs a free API key from Sandro) | none | blocked: needs key |
