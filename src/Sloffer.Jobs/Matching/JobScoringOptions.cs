@@ -120,10 +120,21 @@ public static class JobScoringDefaults
     public static readonly string[] MidTerms = ["mid", "medior", "regular"];
     public static readonly string[] LeadTerms = ["lead"];
 
+    // Phrases about the employer's business, not bare words: listings say "health insurance", "bank holidays" and
+    // "ability to travel" in their benefits and logistics, which said nothing about the domain.
     public static readonly string[] PrimaryDomainTerms =
-        ["fintech", "payments", "banking", "bank", "financial", "trading", "insurance", "open banking"];
+    [
+        "fintech", "payments", "banking", "neobank", "digital bank", "challenger bank", "bank accounts",
+        "financial services", "financial institution|financial institutions", "financial markets", "financial crime",
+        "financial technology", "financial products", "trading", "insurtech", "insurer|insurers", "insurance company",
+        "insurance companies", "insurance platform", "insurance industry", "insurance products", "insurance claims",
+    ];
 
-    public static readonly string[] SecondaryDomainTerms = ["marketplace", "travel", "booking", "e-commerce|ecommerce"];
+    public static readonly string[] SecondaryDomainTerms =
+    [
+        "marketplace", "travel tech|traveltech", "travel industry", "travel platform", "online travel", "travel company",
+        "booking", "e-commerce|ecommerce",
+    ];
 
     public static readonly string[] StackTerms =
     [

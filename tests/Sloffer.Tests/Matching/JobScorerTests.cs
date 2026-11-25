@@ -25,7 +25,7 @@ public sealed class JobScorerTests
         Assert.Equal(BaseExpected, result.Score);
         Assert.Equal(["no level in title (+5)"], result.Reasons);
         Assert.Equal(JobScorer.Version, result.Version);
-        Assert.Equal(2, JobScorer.Version);
+        Assert.Equal(3, JobScorer.Version);
     }
 
     [Fact]
@@ -224,10 +224,13 @@ public sealed class JobScorerTests
     [Theory]
     [InlineData("A fintech startup.", 12, "domain: fintech (+12)")]
     [InlineData("Open banking APIs for a bank.", 12, "domain: banking (+12)")]
-    [InlineData("Insurance claims platform.", 12, "domain: insurance (+12)")]
+    [InlineData("Insurance claims platform.", 12, "domain: insurance claims (+12)")]
     [InlineData("A travel booking marketplace.", 6, "domain: marketplace (+6)")]
     [InlineData("Our e-commerce site.", 6, "domain: e-commerce (+6)")]
-    [InlineData("A travel site for a bank.", 12, "domain: bank (+12)")]
+    [InlineData("A travel platform for a digital bank.", 12, "domain: digital bank (+12)")]
+    [InlineData("We fight financial crime.", 12, "domain: financial crime (+12)")]
+    [InlineData("Personal and business bank accounts.", 12, "domain: bank accounts (+12)")]
+    [InlineData("The leading online travel agency.", 6, "domain: online travel (+6)")]
     public void Score_domain_adds_larger_bonus_once(string extra, int points, string reason)
     {
         var result = Score(description: $"{BaseDescription} {extra}");
@@ -235,6 +238,19 @@ public sealed class JobScorerTests
         Assert.Equal(BaseExpected + points, result.Score);
         Assert.Single(result.Reasons, r => r.StartsWith("domain:", StringComparison.Ordinal));
         Assert.Contains(reason, result.Reasons);
+    }
+
+    [Theory]
+    [InlineData("Private health insurance, life insurance and dental insurance.")]
+    [InlineData("25 days leave + 8 bank holidays.")]
+    [InlineData("Ability to travel up to 25%. Expect to travel twice a year.")]
+    [InlineData("Financial wellbeing support and a financial bonus.")]
+    public void Score_benefits_and_logistics_wording_adds_no_domain_bonus(string extra)
+    {
+        var result = Score(description: $"{BaseDescription} {extra}");
+
+        Assert.Equal(BaseExpected, result.Score);
+        Assert.DoesNotContain(result.Reasons, r => r.StartsWith("domain:", StringComparison.Ordinal));
     }
 
     [Fact]
