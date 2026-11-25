@@ -18,6 +18,13 @@ public sealed class JobScoringOptions
     public int RescoreBatchSize { get; set; } = 500;
 
     // Hard rules
+    /// <summary>Title terms that mean the job is not a software engineering IC role (score 0, "role: term").</summary>
+    public string[]? RoleRejectTitleTerms { get; set; }
+    /// <summary>Title terms rejected only when the title has no <see cref="EngineeringTitleTerms"/> (e.g. "consultant").</summary>
+    public string[]? RoleRejectUnlessEngineeringTitleTerms { get; set; }
+    /// <summary>A title must contain one of these to count as an engineering role.</summary>
+    public string[]? EngineeringTitleTerms { get; set; }
+
     public string[]? DotNetTerms { get; set; }
     public string[]? EmeaLocations { get; set; }
     public string[]? NonEmeaLocations { get; set; }
@@ -75,6 +82,36 @@ public sealed class JobScoringOptions
 /// <summary>Default term lists for <see cref="JobScoringOptions"/>.</summary>
 public static class JobScoringDefaults
 {
+    // The title decides what the job is; a keyword in the description never turns a non-engineering job into a match.
+    public static readonly string[] RoleRejectTitleTerms =
+    [
+        // QA / testing
+        "qa", "quality assurance", "test engineer", "tester", "sdet", "test automation", "quality engineer",
+        // management ("team lead" / "tech lead" are a seniority penalty, not a reject)
+        "manager", "director", "head of", "vp", "vice president", "chief", "cto",
+        // non-engineering
+        "sales", "account executive", "recruiter", "talent", "marketing", "support", "customer success", "designer",
+        "ux", "analyst", "project manager", "product owner", "scrum", "administrator", "technician",
+        // data / ML specialisations that are not backend
+        "data scientist", "data engineer", "machine learning", "ml engineer",
+        // other non-backend specialisations
+        "frontend|front-end", "android", "ios",
+        // seniority too low
+        "intern", "internship", "trainee", "junior", "graduate", "entry level|entry-level", "werkstudent", "praktikum",
+        "ausbildung", "duales studium", "stagiaire",
+    ];
+
+    public static readonly string[] RoleRejectUnlessEngineeringTitleTerms = ["consultant"];
+
+    public static readonly string[] EngineeringTitleTerms =
+    [
+        "developer", "engineer", "software", "backend", "back-end", "full stack|full-stack", "fullstack", "architect",
+        "programmer", "dev", "swe", ".NET", "C#", "dotnet", "ASP.NET",
+        // German and French titles (Arbeitnow)
+        "entwickler", "softwareentwickler", "softwareingenieur", "ingenieur", "développeur|developpeur",
+        "ingénieur",
+    ];
+
     public static readonly string[] DotNetTerms = [".NET", "dotnet", "C#", "ASP.NET"];
 
     public static readonly string[] EmeaLocations =
@@ -114,7 +151,7 @@ public static class JobScoringDefaults
     public static readonly string[] RemoteTerms = ["remote", "worldwide", "anywhere"];
 
     public static readonly string[] ExcludedSeniorityTerms =
-        ["junior", "intern", "trainee", "graduate", "staff", "principal", "head of", "director", "VP", "chief"];
+        ["staff", "principal"];
 
     public static readonly string[] SeniorTerms = ["senior"];
     public static readonly string[] MidTerms = ["mid", "medior", "regular"];

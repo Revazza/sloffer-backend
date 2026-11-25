@@ -18,9 +18,12 @@ public sealed record ScoreResult(int Score, IReadOnlyList<string> Reasons, int V
 public sealed partial class JobScorer
 {
     /// <summary>Bump when the rules change, so <see cref="JobRescoreService"/> rescores stored jobs.</summary>
-    public const int Version = 3;
+    public const int Version = 4;
 
     private readonly JobScoringOptions _options;
+    private readonly TermMatcher _roleReject;
+    private readonly TermMatcher _roleRejectUnlessEngineering;
+    private readonly TermMatcher _engineering;
     private readonly TermMatcher _dotNet;
     private readonly TermMatcher _emea;
     private readonly TermMatcher _nonEmea;
@@ -39,6 +42,10 @@ public sealed partial class JobScorer
     {
         var o = options.Value;
         _options = o;
+        _roleReject = new TermMatcher(o.RoleRejectTitleTerms ?? JobScoringDefaults.RoleRejectTitleTerms);
+        _roleRejectUnlessEngineering = new TermMatcher(
+            o.RoleRejectUnlessEngineeringTitleTerms ?? JobScoringDefaults.RoleRejectUnlessEngineeringTitleTerms);
+        _engineering = new TermMatcher(o.EngineeringTitleTerms ?? JobScoringDefaults.EngineeringTitleTerms);
         _dotNet = new TermMatcher(o.DotNetTerms ?? JobScoringDefaults.DotNetTerms);
         _emea = new TermMatcher(o.EmeaLocations ?? JobScoringDefaults.EmeaLocations);
         _nonEmea = new TermMatcher(o.NonEmeaLocations ?? JobScoringDefaults.NonEmeaLocations);
@@ -63,6 +70,10 @@ public sealed partial class JobScorer
 
         // Hard rules: every failing rule adds its reason; any failure gives 0.
         var failures = new List<string>();
+
+        // The title decides what the job is: the description never turns a non-engineering role into a match.
+        if (CheckRole(title) is { } role)
+            failures.Add(role);
 
         if (!_dotNet.Any(text))
             failures.Add("not .NET");
@@ -130,6 +141,20 @@ public sealed partial class JobScorer
         }
 
         return new ScoreResult(Math.Clamp(score, 0, 100), reasons, Version);
+    }
+
+    /// <summary>"role: term" when the title names a non-engineering (or too junior) role, otherwise null.</summary>
+    private string? CheckRole(string title)
+    {
+        if (_roleReject.FirstMatch(title) is { } rejected)
+            return $"role: {rejected}";
+
+        if (_engineering.Any(title))
+            return null;
+
+        return _roleRejectUnlessEngineering.FirstMatch(title) is { } term
+            ? $"role: {term}"
+            : "role: title is not an engineering role";
     }
 
     private (string? Failure, bool Remote) CheckRegion(string title, string description, string location)

@@ -25,7 +25,7 @@ public sealed class JobScorerTests
         Assert.Equal(BaseExpected, result.Score);
         Assert.Equal(["no level in title (+5)"], result.Reasons);
         Assert.Equal(JobScorer.Version, result.Version);
-        Assert.Equal(3, JobScorer.Version);
+        Assert.Equal(4, JobScorer.Version);
     }
 
     [Fact]
@@ -56,9 +56,9 @@ public sealed class JobScorerTests
     [InlineData("Java Developer", "We write Java and Kotlin.")]
     [InlineData("Go Engineer", "Experience with ObjC# is a plus.")]
     [InlineData("Network Engineer", "Manage example.network domains.")]
-    [InlineData("Regulatory Lead", "eFX Trading Platform of the Year (Risk.net).")]
-    [InlineData("Fraud Analyst", "<img src=\"https://assets.ctfassets.net/3h69/logo.png\">See https://images.ctfassets.net/x.png")]
-    [InlineData("Account Executive", "Read more at aboutus.godaddy.net/about-us")]
+    [InlineData("Backend Engineer", "eFX Trading Platform of the Year (Risk.net).")]
+    [InlineData("Backend Engineer", "<img src=\"https://assets.ctfassets.net/3h69/logo.png\">See https://images.ctfassets.net/x.png")]
+    [InlineData("Backend Engineer", "Read more at aboutus.godaddy.net/about-us")]
     public void Score_job_without_dotnet_returns_0_not_dotnet(string title, string description)
     {
         var result = Score(title: title, description: description);
@@ -146,19 +146,87 @@ public sealed class JobScorerTests
         Assert.Equal(["location unknown"], result.Reasons);
     }
 
-    // ---- Hard rule: seniority ----
+    // ---- Hard rule: role (title only) ----
 
     [Theory]
     [InlineData("Junior .NET Developer", "junior")]
     [InlineData(".NET Intern", "intern")]
     [InlineData("Trainee C# Developer", "trainee")]
     [InlineData("Graduate Software Engineer", "graduate")]
-    [InlineData("Staff Engineer", "staff")]
-    [InlineData("Principal .NET Engineer", "principal")]
     [InlineData("Head of Engineering", "head of")]
     [InlineData("Engineering Director", "director")]
-    [InlineData("VP Engineering", "VP")]
+    [InlineData("VP Engineering", "vp")]
     [InlineData("Chief Technology Officer", "chief")]
+    [InlineData("Senior Manager, Engineering Operations", "manager")]
+    [InlineData("Engineering Manager (.NET)", "manager")]
+    [InlineData("Senior QA Engineer (C#, Selenium)", "qa")]
+    [InlineData("SDET - C#", "sdet")]
+    [InlineData("Test Automation Engineer .NET", "test automation")]
+    [InlineData("Senior Advanced Support Engineer", "support")]
+    [InlineData("Sales Engineer", "sales")]
+    [InlineData("Enterprise Account Executive - EU", "account executive")]
+    [InlineData("Data Engineer (C# a plus)", "data engineer")]
+    [InlineData("AI & Data Engineer", "data engineer")]
+    [InlineData("Machine Learning Engineer", "machine learning")]
+    [InlineData("Senior Frontend Engineer", "frontend")]
+    [InlineData("Business Analyst .NET", "analyst")]
+    [InlineData("Ausbildung: Fachinformatiker (m/w/d)", "ausbildung")]
+    public void Score_non_engineering_or_too_junior_title_returns_0_with_role_reason(string title, string term)
+    {
+        var result = Score(title: title);
+
+        Assert.Equal(0, result.Score);
+        Assert.Equal([$"role: {term}"], result.Reasons);
+    }
+
+    [Theory]
+    [InlineData("Regulatory Lead")]
+    [InlineData("Fachinformatiker Systemintegration")]
+    [InlineData("Engineering - Internal AI Transformation")]
+    public void Score_title_without_engineering_word_returns_0_not_engineering_role(string title)
+    {
+        var result = Score(title: title);
+
+        Assert.Equal(0, result.Score);
+        Assert.Equal(["role: title is not an engineering role"], result.Reasons);
+    }
+
+    [Theory]
+    [InlineData("IT Consultant", "role: consultant")]
+    [InlineData(".NET Consultant", null)]
+    [InlineData("Consultant Software Developer", null)]
+    public void Score_consultant_passes_only_with_an_engineering_word(string title, string? reason)
+    {
+        var result = Score(title: title);
+
+        if (reason is null)
+            Assert.True(result.Score > 0);
+        else
+            Assert.Equal([reason], result.Reasons);
+    }
+
+    [Theory]
+    [InlineData("Backend Developer")]
+    [InlineData(".NET Developer")]
+    [InlineData("C# Programmer")]
+    [InlineData("Senior Softwareentwickler (m/w/d) .NET")]
+    [InlineData("Entwickler C#")]
+    [InlineData("Développeur C# .net Front-Office")]
+    [InlineData("Software Architect")]
+    [InlineData("Fullstack Engineer C# / React")]
+    [InlineData("Backend Team Lead")]
+    [InlineData("Senior Product Engineer")]
+    [InlineData("Supportive Platform Developer")]
+    public void Score_engineering_titles_pass_the_role_gate(string title)
+    {
+        Assert.DoesNotContain(Score(title: title).Reasons, r => r.StartsWith("role:", StringComparison.Ordinal));
+    }
+
+    // ---- Hard rule: seniority ----
+
+    [Theory]
+    [InlineData("Staff Engineer", "staff")]
+    [InlineData("Principal .NET Engineer", "principal")]
     public void Score_excluded_seniority_in_title_returns_0_with_reason(string title, string term)
     {
         var result = Score(title: title);
@@ -182,7 +250,7 @@ public sealed class JobScorerTests
         var result = Score(title: "Junior Java Developer", location: "USA", description: "Java only.");
 
         Assert.Equal(0, result.Score);
-        Assert.Equal(["not .NET", "location outside EMEA (USA)", "seniority excluded (junior)"], result.Reasons);
+        Assert.Equal(["role: junior", "not .NET", "location outside EMEA (USA)"], result.Reasons);
     }
 
     // ---- Soft rules ----
@@ -215,7 +283,7 @@ public sealed class JobScorerTests
     [Fact]
     public void Score_senior_lead_title_applies_both_level_rules()
     {
-        var result = Score(title: "Senior Tech Lead");
+        var result = Score(title: "Senior Tech Lead Engineer");
 
         Assert.Equal(40 + 5 - 10, result.Score);
         Assert.Equal(["senior title (+5)", "lead title (-10)"], result.Reasons);
