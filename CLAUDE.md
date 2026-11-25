@@ -69,7 +69,7 @@ Sloffer is Sandro's personal job finder. The Jobs worker pulls recent public job
 
 - Profile the matching assumes: ~4 years .NET/C# backend, mid/medior (stretch senior), strongest in fintech/banking/payments, owns production services, shared libraries and test infrastructure. Gaps: cloud provider, Kubernetes, modern frontend.
 - Matching is **rules first** (hard filters: .NET, EMEA, seniority; soft points: domain, stack overlap, gaps, visa/relocation, remote, years required), stored as `Score` + reasons on each job. AI scoring of the top few jobs may come later, not before.
-- Sources: Jobicy is live. Others come later as one more `IJobSource` each (see `Sloffer.Jobs/Sources/Jobicy` as the pattern).
+- Sources: Jobicy is live. Arbeitnow (`Sources/Arbeitnow`) is live too: paged, keeps only listings matching `JobFetch:Arbeitnow:RequiredKeywords` (.NET terms). Others come later as one more `IJobSource` each (see `Sloffer.Jobs/Sources/Jobicy` as the pattern).
 - Planned work lives in `docs/next/*.md` (specs written for the implement-task flow). Order: jobs API, rule-based scoring, score in the API.
 - Applying migrations is manual: `dotnet ef database update --project src/Sloffer.Data`.
 
