@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <None Include="Jobs\**\Fixtures\*.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Matching\GoldenJobs\*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
