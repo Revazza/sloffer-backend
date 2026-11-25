@@ -1,0 +1,53 @@
+[
+  {
+    "last_updated": 1795566028,
+    "legal": "API Terms of Service: Please link back (with follow, and without nofollow!) to the URL on Remote OK and mention Remote OK as a source, so we get traffic back from your site. If you do not we'll have to suspend API access.\n\nPlease don't use the Remote OK logo without written permission as it's a registered trademark, please DO use our name Remote OK though."
+  },
+  {
+    "slug": "remote-senior-net-developer-example-payments-1130001",
+    "id": "1130001",
+    "epoch": 1795507200,
+    "date": "2026-11-24T08:00:00+00:00",
+    "company": "Example Payments",
+    "company_logo": "",
+    "position": "Senior .NET Developer",
+    "tags": ["c#", "dotnet", "backend"],
+    "description": "<p>Build payment APIs in C# and ASP.NET Core.</p>",
+    "location": "Europe",
+    "apply_url": "https://remoteOK.com/remote-jobs/remote-senior-net-developer-example-payments-1130001",
+    "original": true,
+    "salary_min": 0,
+    "salary_max": 0,
+    "logo": "",
+    "url": "https://remoteOK.com/remote-jobs/remote-senior-net-developer-example-payments-1130001"
+  },
+  {
+    "slug": "remote-senior-go-engineer-example-infra-1130002",
+    "id": "1130002",
+    "epoch": 1795503600,
+    "company": "Example Infra",
+    "position": "Senior Go Engineer",
+    "tags": ["golang", "kubernetes"],
+    "description": "<p>Go services on Kubernetes.</p>",
+    "location": "",
+    "url": "https://remoteOK.com/remote-jobs/remote-senior-go-engineer-example-infra-1130002"
+  },
+  {
+    "slug": "remote-backend-developer-example-old-1130003",
+    "id": "1130003",
+    "epoch": 1793318400,
+    "company": "Example Old",
+    "position": "Backend Developer",
+    "tags": ["c#"],
+    "description": "<p>.NET services.</p>",
+    "location": "Worldwide",
+    "url": "https://remoteOK.com/remote-jobs/remote-backend-developer-example-old-1130003"
+  },
+  {
+    "slug": "broken",
+    "id": "1130004",
+    "company": "Example Broken",
+    "position": "C# Developer",
+    "url": "https://remoteOK.com/remote-jobs/broken"
+  }
+]
