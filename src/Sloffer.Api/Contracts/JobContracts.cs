@@ -41,10 +41,13 @@ public sealed record JobListQuery
     [Description("Include jobs marked as duplicates of another job (same company and title, possibly from another source). Default false: duplicates are hidden and not counted in totalCount.")]
     public bool IncludeDuplicates { get; init; }
 
-    /// <summary>Hide scored jobs below this score, 0 to 100. Default 1 hides jobs that failed a hard rule (score 0); 0 shows all. Unscored jobs are always shown.</summary>
-    [Description("Hide scored jobs whose score is below this value, 0 to 100. Default 1 hides jobs that failed a hard rule (score 0); 0 shows all. Jobs not scored yet (score null) are always shown.")]
+    /// <summary>Hide scored jobs below this score, 0 to 100. Default 55 shows only "Good" (55-74) and "Excellent" (75-100) matches; 1 hides only rejected jobs (score 0); 0 shows all. Unscored jobs are always shown.</summary>
+    [Description("Hide scored jobs whose score is below this value, 0 to 100. Default 55: only Good (55-74) and Excellent (75-100) matches. Bands: 75-100 Excellent, 55-74 Good, 35-54 Maybe, 1-34 Weak, 0 rejected. Pass 1 to hide only rejected jobs, 0 to show all. Jobs not scored yet (score null) are always shown.")]
     [Range(0, 100, ErrorMessage = "minScore must be between 0 and 100.")]
-    public int MinScore { get; init; } = 1;
+    public int MinScore { get; init; } = DefaultMinScore;
+
+    /// <summary>The "Good" band starts here.</summary>
+    public const int DefaultMinScore = 55;
 
     /// <summary><c>score</c> (default): best score first, unscored last, then newest. <c>posted</c>: newest first.</summary>
     [Description("'score' (default): highest score first, unscored jobs last, then newest first, then id. 'posted': newest first, then id.")]

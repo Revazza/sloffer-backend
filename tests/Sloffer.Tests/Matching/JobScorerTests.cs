@@ -26,7 +26,7 @@ public sealed class JobScorerTests
         Assert.Equal(BaseExpected, result.Score);
         Assert.Equal([CoreReason, "no level in title (+5)"], result.Reasons);
         Assert.Equal(JobScorer.Version, result.Version);
-        Assert.Equal(5, JobScorer.Version);
+        Assert.Equal(6, JobScorer.Version);
     }
 
     [Fact]
@@ -223,17 +223,26 @@ public sealed class JobScorerTests
         Assert.DoesNotContain(Score(title: title).Reasons, r => r.StartsWith("role:", StringComparison.Ordinal));
     }
 
-    // ---- Hard rule: seniority ----
+    // ---- Seniority: staff / principal are a penalty, not a reject ----
 
     [Theory]
     [InlineData("Staff Engineer", "staff")]
-    [InlineData("Principal .NET Engineer", "principal")]
-    public void Score_excluded_seniority_in_title_returns_0_with_reason(string title, string term)
+    [InlineData("Principal Backend Engineer", "principal")]
+    public void Score_staff_or_principal_title_is_penalised_not_rejected(string title, string term)
     {
         var result = Score(title: title);
 
-        Assert.Equal(0, result.Score);
-        Assert.Equal([$"seniority excluded ({term})"], result.Reasons);
+        Assert.Equal(40 + 25 - 15, result.Score);
+        Assert.Equal([CoreReason, $"{term} title (usually 8+ years) (-15)"], result.Reasons);
+    }
+
+    [Fact]
+    public void Score_senior_staff_title_gets_both_level_rules()
+    {
+        var result = Score(title: "Senior Staff Engineer");
+
+        Assert.Equal(40 + 25 + 5 - 15, result.Score);
+        Assert.Equal([CoreReason, "senior title (+5)", "staff title (usually 8+ years) (-15)"], result.Reasons);
     }
 
     [Theory]
@@ -329,11 +338,14 @@ public sealed class JobScorerTests
 
     [Theory]
     [InlineData("Senior Backend Developer", 40 + 25 + 5, "senior title (+5)")]
-    [InlineData("Mid Backend Developer", 40 + 25 + 10, "mid-level title (+10)")]
-    [InlineData("Mid-level Backend Developer", 40 + 25 + 10, "mid-level title (+10)")]
-    [InlineData("Medior Backend Developer", 40 + 25 + 10, "mid-level title (+10)")]
-    [InlineData("Regular Backend Developer", 40 + 25 + 10, "mid-level title (+10)")]
-    [InlineData("Backend Team Lead", 40 + 25 - 10, "lead title (-10)")]
+    [InlineData("Mid Backend Developer", 40 + 25 + 5, "mid-level title (+5)")]
+    [InlineData("Mid-level Backend Developer", 40 + 25 + 5, "mid-level title (+5)")]
+    [InlineData("Medior Backend Developer", 40 + 25 + 5, "mid-level title (+5)")]
+    [InlineData("Regular Backend Developer", 40 + 25 + 5, "mid-level title (+5)")]
+    [InlineData("Backend Team Lead", 40 + 25 - 5, "lead title (-5)")]
+    [InlineData("Backend Tech Lead", 40 + 25 - 5, "lead title (-5)")]
+    [InlineData("Sr. Backend Developer", 40 + 25 + 5, "senior title (+5)")]
+    [InlineData("Middle Backend Developer", 40 + 25 + 5, "mid-level title (+5)")]
     [InlineData("Backend Developer", 40 + 25 + 5, "no level in title (+5)")]
     public void Score_level_word_in_title_adjusts_score(string title, int expected, string reason)
     {
@@ -348,8 +360,8 @@ public sealed class JobScorerTests
     {
         var result = Score(title: "Senior Tech Lead Engineer");
 
-        Assert.Equal(40 + 25 + 5 - 10, result.Score);
-        Assert.Equal([CoreReason, "senior title (+5)", "lead title (-10)"], result.Reasons);
+        Assert.Equal(40 + 25 + 5 - 5, result.Score);
+        Assert.Equal([CoreReason, "senior title (+5)", "lead title (-5)"], result.Reasons);
     }
 
     [Theory]
@@ -445,10 +457,11 @@ public sealed class JobScorerTests
     [Theory]
     [InlineData("3+ years of C#", 5, "asks 3+ years (+5)")]
     [InlineData("5 + yrs of C#", 5, "asks 5+ years (+5)")]
-    [InlineData("6+ years of C#", 0, "asks 6+ years (0)")]
-    [InlineData("7+ years of C#", 0, "asks 7+ years (0)")]
-    [InlineData("8+ years of C#", -15, "asks 8+ years (-15)")]
-    [InlineData("2+ years of SQL and 10+ years of C#", -15, "asks 10+ years (-15)")]
+    [InlineData("6+ years of C#", 5, "asks 6+ years (+5)")]
+    [InlineData("7+ years of C#", -8, "asks 7+ years (-8)")]
+    [InlineData("9+ years of C#", -8, "asks 9+ years (-8)")]
+    [InlineData("10+ years of C#", -20, "asks 10+ years (-20)")]
+    [InlineData("2+ years of SQL and 12+ years of C#", -20, "asks 12+ years (-20)")]
     public void Score_years_pattern_uses_largest_N(string description, int points, string reason)
     {
         var result = Score(description: $"{BaseDescription} {description}");
@@ -482,10 +495,10 @@ public sealed class JobScorerTests
     {
         var scorer = CreateScorer(new JobScoringOptions { BaseScore = 5 });
 
-        var result = scorer.Score(Job(title: "Backend Lead", description: "C# on AWS, Azure and K8s. 10+ years."));
+        var result = scorer.Score(Job(title: "Backend Lead", description: "C# on .NET, AWS, Azure and K8s. 10+ years."));
 
         Assert.Equal(0, result.Score);
-        Assert.Contains("lead title (-10)", result.Reasons);
+        Assert.Contains("lead title (-5)", result.Reasons);
     }
 
     [Fact]

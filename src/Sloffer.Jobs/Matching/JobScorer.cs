@@ -18,7 +18,7 @@ public sealed record ScoreResult(int Score, IReadOnlyList<string> Reasons, int V
 public sealed partial class JobScorer
 {
     /// <summary>Bump when the rules change, so <see cref="JobRescoreService"/> rescores stored jobs.</summary>
-    public const int Version = 5;
+    public const int Version = 6;
 
     private readonly JobScoringOptions _options;
     private readonly TermMatcher _roleReject;
@@ -31,7 +31,7 @@ public sealed partial class JobScorer
     private readonly TermMatcher _emea;
     private readonly TermMatcher _nonEmea;
     private readonly TermMatcher _remote;
-    private readonly TermMatcher _excludedSeniority;
+    private readonly TermMatcher _staff;
     private readonly TermMatcher _senior;
     private readonly TermMatcher _mid;
     private readonly TermMatcher _lead;
@@ -56,7 +56,7 @@ public sealed partial class JobScorer
         _emea = new TermMatcher(o.EmeaLocations ?? JobScoringDefaults.EmeaLocations);
         _nonEmea = new TermMatcher(o.NonEmeaLocations ?? JobScoringDefaults.NonEmeaLocations);
         _remote = new TermMatcher(o.RemoteTerms ?? JobScoringDefaults.RemoteTerms);
-        _excludedSeniority = new TermMatcher(o.ExcludedSeniorityTerms ?? JobScoringDefaults.ExcludedSeniorityTerms);
+        _staff = new TermMatcher(o.StaffTerms ?? JobScoringDefaults.StaffTerms);
         _senior = new TermMatcher(o.SeniorTerms ?? JobScoringDefaults.SeniorTerms);
         _mid = new TermMatcher(o.MidTerms ?? JobScoringDefaults.MidTerms);
         _lead = new TermMatcher(o.LeadTerms ?? JobScoringDefaults.LeadTerms);
@@ -88,9 +88,6 @@ public sealed partial class JobScorer
         if (region.Failure is not null)
             failures.Add(region.Failure);
 
-        if (_excludedSeniority.FirstMatch(title) is { } excluded)
-            failures.Add($"seniority excluded ({excluded})");
-
         if (failures.Count > 0)
             return new ScoreResult(0, failures, Version);
 
@@ -115,13 +112,16 @@ public sealed partial class JobScorer
         var senior = _senior.Any(title);
         var mid = _mid.Any(title);
         var lead = _lead.Any(title);
+        var staff = _staff.FirstMatch(title);
         if (senior)
             Apply(o.SeniorPoints, "senior title");
         if (mid)
             Apply(o.MidPoints, "mid-level title");
         if (lead)
             Apply(o.LeadPoints, "lead title");
-        if (!senior && !mid && !lead)
+        if (staff is not null)
+            Apply(o.StaffPoints, $"{staff} title (usually 8+ years)");
+        if (!senior && !mid && !lead && staff is null)
             Apply(o.NoLevelPoints, "no level in title");
 
         // Domain: the larger bonus only, once.
@@ -146,7 +146,10 @@ public sealed partial class JobScorer
 
         if (MaxYears(text) is { } years)
         {
-            var points = years <= o.FewYearsMax ? o.FewYearsPoints : years >= o.ManyYearsMin ? o.ManyYearsPoints : 0;
+            var points = years <= o.FewYearsMax ? o.FewYearsPoints
+                : years >= o.TooManyYearsMin ? o.TooManyYearsPoints
+                : years >= o.ManyYearsMin ? o.ManyYearsPoints
+                : 0;
             Apply(points, $"asks {years}+ years");
         }
 

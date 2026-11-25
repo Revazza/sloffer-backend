@@ -29,7 +29,7 @@ public sealed class JobScoringOptions
     public string[]? EmeaLocations { get; set; }
     public string[]? NonEmeaLocations { get; set; }
     public string[]? RemoteTerms { get; set; }
-    public string[]? ExcludedSeniorityTerms { get; set; }
+
 
     // Soft rules
     /// <summary>Starting score for jobs that pass every hard rule.</summary>
@@ -49,12 +49,17 @@ public sealed class JobScoringOptions
     /// <summary>"Nice to have" markers: a clause with one is weak, and a short heading line with one makes the rest weak.</summary>
     public string[]? WeakMarkerTerms { get; set; }
 
+    // Seniority fit (about 4 years, mid to senior): senior, mid and a plain title fit equally well.
     public string[]? SeniorTerms { get; set; }
     public int SeniorPoints { get; set; } = 5;
     public string[]? MidTerms { get; set; }
-    public int MidPoints { get; set; } = 10;
+    public int MidPoints { get; set; } = 5;
+    /// <summary>Lead / team lead / tech lead: a small penalty, not a reject.</summary>
     public string[]? LeadTerms { get; set; }
-    public int LeadPoints { get; set; } = -10;
+    public int LeadPoints { get; set; } = -5;
+    /// <summary>Staff / principal: usually 8+ years, a bigger penalty, not a reject.</summary>
+    public string[]? StaffTerms { get; set; }
+    public int StaffPoints { get; set; } = -15;
     public int NoLevelPoints { get; set; } = 5;
 
     public string[]? PrimaryDomainTerms { get; set; }
@@ -76,12 +81,15 @@ public sealed class JobScoringOptions
 
     public int RemotePoints { get; set; } = 6;
 
-    /// <summary>"N+ years" with N up to this value gives <see cref="FewYearsPoints"/>.</summary>
-    public int FewYearsMax { get; set; } = 5;
+    /// <summary>"N+ years" with N up to this value gives <see cref="FewYearsPoints"/> (3-6 years fits).</summary>
+    public int FewYearsMax { get; set; } = 6;
     public int FewYearsPoints { get; set; } = 5;
-    /// <summary>"N+ years" with N at least this value gives <see cref="ManyYearsPoints"/>. Values in between give 0.</summary>
-    public int ManyYearsMin { get; set; } = 8;
-    public int ManyYearsPoints { get; set; } = -15;
+    /// <summary>"N+ years" with N from this value up to <see cref="TooManyYearsMin"/> - 1 gives <see cref="ManyYearsPoints"/>.</summary>
+    public int ManyYearsMin { get; set; } = 7;
+    public int ManyYearsPoints { get; set; } = -8;
+    /// <summary>"N+ years" with N at least this value gives <see cref="TooManyYearsPoints"/>.</summary>
+    public int TooManyYearsMin { get; set; } = 10;
+    public int TooManyYearsPoints { get; set; } = -20;
 
     internal bool IsValid() =>
         RescoreBatchSize > 0
@@ -89,6 +97,7 @@ public sealed class JobScoringOptions
         && StackPointsMax >= 0
         && GapPointsMin <= 0
         && FewYearsMax < ManyYearsMin
+        && ManyYearsMin <= TooManyYearsMin
         && DotNetCoreMinMentions >= 1
         && DotNetMentionedMaxScore is >= 0 and <= 100;
 }
@@ -179,11 +188,11 @@ public static class JobScoringDefaults
 
     public static readonly string[] RemoteTerms = ["remote", "worldwide", "anywhere"];
 
-    public static readonly string[] ExcludedSeniorityTerms =
+    public static readonly string[] StaffTerms =
         ["staff", "principal"];
 
-    public static readonly string[] SeniorTerms = ["senior"];
-    public static readonly string[] MidTerms = ["mid", "medior", "regular"];
+    public static readonly string[] SeniorTerms = ["senior", "sr"];
+    public static readonly string[] MidTerms = ["mid", "middle", "medior", "regular"];
     public static readonly string[] LeadTerms = ["lead"];
 
     // Phrases about the employer's business, not bare words: listings say "health insurance", "bank holidays" and
