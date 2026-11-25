@@ -36,6 +36,27 @@ internal sealed class TermMatcher
 
     public bool Any(string text) => _terms.Any(t => t.Pattern.IsMatch(text));
 
+    /// <summary>Start index of every match of any term, in text order; overlapping matches count once.</summary>
+    public IReadOnlyList<int> Positions(string text)
+    {
+        var matches = _terms
+            .SelectMany(t => t.Pattern.Matches(text))
+            .OrderBy(m => m.Index)
+            .ThenByDescending(m => m.Length);
+
+        var positions = new List<int>();
+        var end = -1;
+        foreach (var match in matches)
+        {
+            if (match.Index < end)
+                continue;
+            positions.Add(match.Index);
+            end = match.Index + match.Length;
+        }
+
+        return positions;
+    }
+
     private static string TermPattern(string term)
     {
         var body = Regex.Escape(term).Replace(@"\ ", @"\s+");

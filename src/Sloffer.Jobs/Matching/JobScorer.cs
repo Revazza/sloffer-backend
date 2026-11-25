@@ -18,13 +18,16 @@ public sealed record ScoreResult(int Score, IReadOnlyList<string> Reasons, int V
 public sealed partial class JobScorer
 {
     /// <summary>Bump when the rules change, so <see cref="JobRescoreService"/> rescores stored jobs.</summary>
-    public const int Version = 4;
+    public const int Version = 5;
 
     private readonly JobScoringOptions _options;
     private readonly TermMatcher _roleReject;
     private readonly TermMatcher _roleRejectUnlessEngineering;
     private readonly TermMatcher _engineering;
     private readonly TermMatcher _dotNet;
+    private readonly TermMatcher _otherLanguage;
+    private readonly TermMatcher _alternativeList;
+    private readonly TermMatcher _weakMarker;
     private readonly TermMatcher _emea;
     private readonly TermMatcher _nonEmea;
     private readonly TermMatcher _remote;
@@ -47,6 +50,9 @@ public sealed partial class JobScorer
             o.RoleRejectUnlessEngineeringTitleTerms ?? JobScoringDefaults.RoleRejectUnlessEngineeringTitleTerms);
         _engineering = new TermMatcher(o.EngineeringTitleTerms ?? JobScoringDefaults.EngineeringTitleTerms);
         _dotNet = new TermMatcher(o.DotNetTerms ?? JobScoringDefaults.DotNetTerms);
+        _otherLanguage = new TermMatcher(o.OtherLanguageTerms ?? JobScoringDefaults.OtherLanguageTerms);
+        _alternativeList = new TermMatcher(o.AlternativeListTerms ?? JobScoringDefaults.AlternativeListTerms);
+        _weakMarker = new TermMatcher(o.WeakMarkerTerms ?? JobScoringDefaults.WeakMarkerTerms);
         _emea = new TermMatcher(o.EmeaLocations ?? JobScoringDefaults.EmeaLocations);
         _nonEmea = new TermMatcher(o.NonEmeaLocations ?? JobScoringDefaults.NonEmeaLocations);
         _remote = new TermMatcher(o.RemoteTerms ?? JobScoringDefaults.RemoteTerms);
@@ -99,8 +105,12 @@ public sealed partial class JobScorer
             reasons.Add($"{reason} ({Points(points)})");
         }
 
-        if (_dotNet.Any(title))
-            Apply(o.TitleDotNetPoints, "title mentions .NET/C#");
+        // .NET centrality: core earns points; only mentioned caps the score below the list threshold.
+        var centrality = DotNetCentrality(title, job.Description);
+        if (centrality.Core)
+            Apply(o.DotNetCorePoints, $".NET core: {centrality.Why}");
+        else
+            reasons.Add($".NET only mentioned: {centrality.Why}; score capped at {o.DotNetMentionedMaxScore}");
 
         var senior = _senior.Any(title);
         var mid = _mid.Any(title);
@@ -140,7 +150,105 @@ public sealed partial class JobScorer
             Apply(points, $"asks {years}+ years");
         }
 
+        if (!centrality.Core)
+            score = Math.Min(score, o.DotNetMentionedMaxScore);
+
         return new ScoreResult(Math.Clamp(score, 0, 100), reasons, Version);
+    }
+
+    /// <summary>
+    /// Is .NET core to the job, or only mentioned? Core: a strong .NET term in the title, or at least
+    /// <c>DotNetCoreMinMentions</c> strong mentions in the description. A mention is weak when its clause offers another
+    /// language as an alternative ("Java, Python or C#", "e.g. Java, C#", "Swift/Kotlin/C#"), when its clause carries a
+    /// "nice to have" marker ("C# is a plus"), or when it comes after a "nice to have / bonus / preferred" heading.
+    /// </summary>
+    private (bool Core, string Why) DotNetCentrality(string title, string? descriptionHtml)
+    {
+        var titleStrong = CountStrong(title, weakFrom: int.MaxValue);
+        if (titleStrong > 0)
+            return (true, "in title");
+
+        var description = StructuredText(descriptionHtml);
+        var strong = CountStrong(description, WeakSectionStart(description));
+        if (strong >= _options.DotNetCoreMinMentions)
+            return (true, $"{strong} mentions in the requirements");
+
+        if (_dotNet.Any(title))
+            return (false, "as an alternative in the title");
+        return (false, strong == 1 ? "1 strong mention in the description" : "as an alternative or nice to have");
+    }
+
+    /// <summary>.NET-family matches that are neither in an alternatives list, nor marked nice-to-have, nor after <paramref name="weakFrom"/>.</summary>
+    private int CountStrong(string text, int weakFrom)
+    {
+        var count = 0;
+        foreach (var position in _dotNet.Positions(text))
+        {
+            if (position >= weakFrom)
+                continue;
+            var clause = ClauseAround(text, position);
+            if (_weakMarker.Any(clause))
+                continue;
+            if (_otherLanguage.Any(clause) && (_alternativeList.Any(clause) || clause.Contains('/')))
+                continue;
+            count++;
+        }
+
+        return count;
+    }
+
+    /// <summary>
+    /// Index of the first short heading line that marks the rest as optional ("Nice to have", "Bonus points:",
+    /// "Preferred qualifications"), or int.MaxValue. A line with a language name or a verb ("Docker is a plus") is a
+    /// requirement, not a heading.
+    /// </summary>
+    private int WeakSectionStart(string text)
+    {
+        var index = 0;
+        foreach (var line in text.Split('\n'))
+        {
+            var trimmed = line.Trim();
+            if (trimmed.Length is > 0 and <= 50
+                && _weakMarker.Any(trimmed)
+                && !_dotNet.Any(trimmed)
+                && !_otherLanguage.Any(trimmed)
+                && !SentenceVerbRegex().IsMatch(trimmed))
+                return index;
+            index += line.Length + 1;
+        }
+
+        return int.MaxValue;
+    }
+
+    /// <summary>The line around <paramref name="position"/>, cut at sentence ends (". ", "; ", but not after "e.g.").</summary>
+    private static string ClauseAround(string text, int position)
+    {
+        var lineStart = text.LastIndexOf('\n', Math.Max(0, position - 1)) + 1;
+        var lineEnd = text.IndexOf('\n', position);
+        var line = text[lineStart..(lineEnd < 0 ? text.Length : lineEnd)];
+        var offset = position - lineStart;
+
+        var start = 0;
+        foreach (Match end in SentenceEndRegex().Matches(line))
+        {
+            if (end.Index + end.Length <= offset)
+                start = end.Index + end.Length;
+            else if (end.Index >= offset)
+                return line[start..end.Index];
+        }
+
+        return line[start..];
+    }
+
+    /// <summary>Plain text that keeps block structure: paragraphs, list items, headings and breaks become lines.</summary>
+    private static string StructuredText(string? html)
+    {
+        if (string.IsNullOrEmpty(html))
+            return "";
+
+        var text = BlockTagRegex().Replace(html, "\n");
+        text = TagRegex().Replace(text, " ");
+        return WebUtility.HtmlDecode(text);
     }
 
     /// <summary>"role: term" when the title names a non-engineering (or too junior) role, otherwise null.</summary>
@@ -210,4 +318,13 @@ public sealed partial class JobScorer
 
     [GeneratedRegex("<[^>]*>")]
     private static partial Regex TagRegex();
+
+    [GeneratedRegex(@"</?(?:p|li|ul|ol|div|h[1-6]|tr|br)\b[^>]*>", RegexOptions.IgnoreCase)]
+    private static partial Regex BlockTagRegex();
+
+    [GeneratedRegex(@"(?<!\b(?:e\.g|i\.e|etc))[.;!?](?=\s)", RegexOptions.IgnoreCase)]
+    private static partial Regex SentenceEndRegex();
+
+    [GeneratedRegex(@"\b(?:is|are|would be|will be|ist|sind)\s+(?:a|an|ein|eine)?\b", RegexOptions.IgnoreCase)]
+    private static partial Regex SentenceVerbRegex();
 }

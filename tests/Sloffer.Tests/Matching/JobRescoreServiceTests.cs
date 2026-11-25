@@ -34,8 +34,8 @@ public sealed class JobRescoreServiceTests
         var stored = await StoredJobsAsync(services, name);
         Assert.All(stored, job =>
         {
-            Assert.Equal(40 + 15 + 5 + 5, job.Score); // .NET in title, no level word, "3+ years"
-            Assert.Equal(["title mentions .NET/C# (+15)", "no level in title (+5)", "asks 3+ years (+5)"], job.ScoreReasons);
+            Assert.Equal(40 + 25 + 5 + 5, job.Score); // .NET core (title), no level word, "3+ years"
+            Assert.Equal([".NET core: in title (+25)", "no level in title (+5)", "asks 3+ years (+5)"], job.ScoreReasons);
             Assert.Equal(JobScorer.Version, job.ScoreVersion);
             Assert.Equal(Start, job.ScoredAt);
         });

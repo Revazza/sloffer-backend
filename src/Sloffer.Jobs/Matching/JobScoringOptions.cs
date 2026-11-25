@@ -35,7 +35,19 @@ public sealed class JobScoringOptions
     /// <summary>Starting score for jobs that pass every hard rule.</summary>
     public int BaseScore { get; set; } = 40;
 
-    public int TitleDotNetPoints { get; set; } = 15;
+    // .NET centrality: "core" (title, or enough strong mentions in the description) vs only "mentioned".
+    /// <summary>Points when .NET is core to the job.</summary>
+    public int DotNetCorePoints { get; set; } = 25;
+    /// <summary>Strong description mentions needed for "core" when the title has no .NET term.</summary>
+    public int DotNetCoreMinMentions { get; set; } = 2;
+    /// <summary>Highest score a job can reach when .NET is only mentioned (keep it below the default list threshold).</summary>
+    public int DotNetMentionedMaxScore { get; set; } = 50;
+    /// <summary>Other languages: a .NET mention in a clause that offers one of these as an alternative is weak.</summary>
+    public string[]? OtherLanguageTerms { get; set; }
+    /// <summary>Words that turn a clause into an alternatives list ("Java, Go or .NET", "e.g."). A "/" does too.</summary>
+    public string[]? AlternativeListTerms { get; set; }
+    /// <summary>"Nice to have" markers: a clause with one is weak, and a short heading line with one makes the rest weak.</summary>
+    public string[]? WeakMarkerTerms { get; set; }
 
     public string[]? SeniorTerms { get; set; }
     public int SeniorPoints { get; set; } = 5;
@@ -76,7 +88,9 @@ public sealed class JobScoringOptions
         && BaseScore is >= 0 and <= 100
         && StackPointsMax >= 0
         && GapPointsMin <= 0
-        && FewYearsMax < ManyYearsMin;
+        && FewYearsMax < ManyYearsMin
+        && DotNetCoreMinMentions >= 1
+        && DotNetMentionedMaxScore is >= 0 and <= 100;
 }
 
 /// <summary>Default term lists for <see cref="JobScoringOptions"/>.</summary>
@@ -113,6 +127,21 @@ public static class JobScoringDefaults
     ];
 
     public static readonly string[] DotNetTerms = [".NET", "dotnet", "C#", "ASP.NET"];
+
+    // "Go" is left out on purpose: it is also an English verb. "C" alone would match inside "C#".
+    public static readonly string[] OtherLanguageTerms =
+    [
+        "Java", "Golang", "Python", "Ruby", "PHP", "Kotlin", "Scala", "Swift", "C++", "Rust", "Node.js|NodeJS", "Elixir",
+        "Perl", "Objective-C", "Dart", "Clojure", "Haskell", "Erlang",
+    ];
+
+    public static readonly string[] AlternativeListTerms = ["or", "oder", "ou", "e.g.", "such as", "any of", "one of"];
+
+    public static readonly string[] WeakMarkerTerms =
+    [
+        "nice to have|nice-to-have", "good to have", "a plus", "bonus", "preferred", "desirable", "an advantage",
+        "advantageous", "optional", "von Vorteil", "wünschenswert", "Pluspunkt",
+    ];
 
     public static readonly string[] EmeaLocations =
     [

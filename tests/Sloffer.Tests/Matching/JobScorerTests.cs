@@ -9,11 +9,12 @@ namespace Sloffer.Tests.Matching;
 /// <summary>Pure scorer tests: no database, no network.</summary>
 public sealed class JobScorerTests
 {
-    // Passes every hard rule and hits only one soft rule ("no level in title"): 40 + 5.
+    // Passes every hard rule; .NET is core (2 strong mentions) and the title has no level word: 40 + 25 + 5.
     private const string BaseTitle = "Backend Developer";
     private const string BaseLocation = "Spain";
-    private const string BaseDescription = "We write C#.";
-    private const int BaseExpected = 45;
+    private const string BaseDescription = "We write C# on .NET.";
+    private const int BaseExpected = 70;
+    private const string CoreReason = ".NET core: 2 mentions in the requirements (+25)";
 
     private static readonly JobScorer Scorer = CreateScorer();
 
@@ -23,9 +24,9 @@ public sealed class JobScorerTests
         var result = Score();
 
         Assert.Equal(BaseExpected, result.Score);
-        Assert.Equal(["no level in title (+5)"], result.Reasons);
+        Assert.Equal([CoreReason, "no level in title (+5)"], result.Reasons);
         Assert.Equal(JobScorer.Version, result.Version);
-        Assert.Equal(4, JobScorer.Version);
+        Assert.Equal(5, JobScorer.Version);
     }
 
     [Fact]
@@ -38,7 +39,7 @@ public sealed class JobScorerTests
 
         Assert.Equal(
         [
-            "title mentions .NET/C# (+15)",
+            ".NET core: in title (+25)",
             "senior title (+5)",
             "domain: payments (+12)",
             "stack: microservices, Kafka, PostgreSQL (+9)",
@@ -47,7 +48,7 @@ public sealed class JobScorerTests
             "remote in EMEA (+6)",
             "asks 4+ years (+5)",
         ], result.Reasons);
-        Assert.Equal(40 + 15 + 5 + 12 + 9 - 3 + 8 + 6 + 5, result.Score);
+        Assert.Equal(100, result.Score); // 40 + 25 + 5 + 12 + 9 - 3 + 8 + 6 + 5 = 107, clamped
     }
 
     // ---- Hard rule: .NET ----
@@ -128,7 +129,7 @@ public sealed class JobScorerTests
     [Fact]
     public void Score_empty_location_with_remote_in_description_passes_as_remote()
     {
-        var result = Score(location: "", description: "Fully remote C# role.");
+        var result = Score(location: "", description: "Fully remote C# role on .NET.");
 
         Assert.Equal(BaseExpected + 6, result.Score);
         Assert.Contains("remote in EMEA (+6)", result.Reasons);
@@ -255,29 +256,91 @@ public sealed class JobScorerTests
 
     // ---- Soft rules ----
 
-    [Fact]
-    public void Score_dotnet_in_title_adds_15()
-    {
-        var result = Score(title: "Backend .NET Developer");
+    // ---- .NET centrality ----
 
-        Assert.Equal(BaseExpected + 15, result.Score);
-        Assert.Contains("title mentions .NET/C# (+15)", result.Reasons);
+    [Fact]
+    public void Score_dotnet_in_title_is_core()
+    {
+        var result = Score(title: "Backend .NET Developer", description: "We build APIs.");
+
+        Assert.Equal(BaseExpected, result.Score);
+        Assert.Equal([".NET core: in title (+25)", "no level in title (+5)"], result.Reasons);
     }
 
     [Theory]
-    [InlineData("Senior Backend Developer", 40 + 5, "senior title (+5)")]
-    [InlineData("Mid Backend Developer", 40 + 10, "mid-level title (+10)")]
-    [InlineData("Mid-level Backend Developer", 40 + 10, "mid-level title (+10)")]
-    [InlineData("Medior Backend Developer", 40 + 10, "mid-level title (+10)")]
-    [InlineData("Regular Backend Developer", 40 + 10, "mid-level title (+10)")]
-    [InlineData("Backend Team Lead", 40 - 10, "lead title (-10)")]
-    [InlineData("Backend Developer", 40 + 5, "no level in title (+5)")]
+    [InlineData("<h3>Requirements</h3><ul><li>C# and ASP.NET Core</li><li>PostgreSQL</li></ul>")]
+    [InlineData("<p>You know C#. You have shipped .NET services.</p>")]
+    [InlineData("<ul><li>C#/.NET 8</li></ul>")]
+    [InlineData("<p>C# and Python are both used daily on our .NET platform.</p>")]
+    public void Score_two_strong_description_mentions_are_core(string description)
+    {
+        var result = Score(description: description);
+
+        Assert.Contains(CoreReason, result.Reasons);
+    }
+
+    [Theory]
+    [InlineData("<p>We write C#.</p>", "1 strong mention in the description")]
+    [InlineData("<p>Java, Python or C#.</p><p>Any of Java, Kotlin or .NET.</p>", "as an alternative or nice to have")]
+    [InlineData("<p>Experience with languages (e.g. C/C++, Java, C#).</p><p>Ruby/C#/.NET welcome.</p>", "as an alternative or nice to have")]
+    [InlineData("<p>Java and Spring.</p><p>C# is a plus. .NET would be a bonus.</p>", "as an alternative or nice to have")]
+    [InlineData("<h3>Requirements</h3><ul><li>Java</li></ul><h3>Nice to have</h3><ul><li>C#</li><li>.NET</li></ul>", "as an alternative or nice to have")]
+    [InlineData("<ul><li>Java</li></ul><p>Bonus points if you have:</p><ul><li>C#</li><li>ASP.NET</li></ul>", "as an alternative or nice to have")]
+    [InlineData("<ul><li>Java</li></ul><h3>Preferred qualifications</h3><ul><li>C# and .NET</li></ul>", "as an alternative or nice to have")]
+    public void Score_weak_mentions_only_cap_the_score_at_50(string description, string why)
+    {
+        var result = Score(
+            title: "Senior Backend Engineer",
+            location: "Remote, Europe",
+            description: $"{description}<p>Payments fintech. Kafka, PostgreSQL, Redis. Visa sponsorship.</p>");
+
+        Assert.Equal(50, result.Score);
+        Assert.Equal($".NET only mentioned: {why}; score capped at 50", result.Reasons[0]);
+    }
+
+    [Fact]
+    public void Score_dotnet_as_alternative_in_title_is_not_core()
+    {
+        var result = Score(title: "Java Developer (or .NET)", description: "<p>Java 21 and Spring Boot.</p>");
+
+        Assert.Equal(".NET only mentioned: as an alternative in the title; score capped at 50", result.Reasons[0]);
+    }
+
+    [Fact]
+    public void Score_requirement_line_with_a_plus_does_not_make_the_rest_weak()
+    {
+        var result = Score(description: "<ul><li>Docker is a plus</li><li>C# and ASP.NET Core</li></ul>");
+
+        Assert.Contains(CoreReason, result.Reasons);
+    }
+
+    [Fact]
+    public void Score_centrality_weights_come_from_config()
+    {
+        var scorer = CreateScorer(new JobScoringOptions { DotNetCorePoints = 10, DotNetMentionedMaxScore = 30, DotNetCoreMinMentions = 3 });
+
+        var core = scorer.Score(Job(description: "<p>C#, .NET and ASP.NET.</p>"));
+        var mentioned = scorer.Score(Job(title: "Senior Backend Developer", description: "<p>C# on .NET. Fintech.</p>"));
+
+        Assert.Equal(40 + 10 + 5, core.Score);
+        Assert.Equal(".NET core: 3 mentions in the requirements (+10)", core.Reasons[0]);
+        Assert.Equal(30, mentioned.Score);
+    }
+
+    [Theory]
+    [InlineData("Senior Backend Developer", 40 + 25 + 5, "senior title (+5)")]
+    [InlineData("Mid Backend Developer", 40 + 25 + 10, "mid-level title (+10)")]
+    [InlineData("Mid-level Backend Developer", 40 + 25 + 10, "mid-level title (+10)")]
+    [InlineData("Medior Backend Developer", 40 + 25 + 10, "mid-level title (+10)")]
+    [InlineData("Regular Backend Developer", 40 + 25 + 10, "mid-level title (+10)")]
+    [InlineData("Backend Team Lead", 40 + 25 - 10, "lead title (-10)")]
+    [InlineData("Backend Developer", 40 + 25 + 5, "no level in title (+5)")]
     public void Score_level_word_in_title_adjusts_score(string title, int expected, string reason)
     {
         var result = Score(title: title);
 
         Assert.Equal(expected, result.Score);
-        Assert.Equal([reason], result.Reasons);
+        Assert.Equal([CoreReason, reason], result.Reasons);
     }
 
     [Fact]
@@ -285,8 +348,8 @@ public sealed class JobScorerTests
     {
         var result = Score(title: "Senior Tech Lead Engineer");
 
-        Assert.Equal(40 + 5 - 10, result.Score);
-        Assert.Equal(["senior title (+5)", "lead title (-10)"], result.Reasons);
+        Assert.Equal(40 + 25 + 5 - 10, result.Score);
+        Assert.Equal([CoreReason, "senior title (+5)", "lead title (-10)"], result.Reasons);
     }
 
     [Theory]
@@ -324,7 +387,7 @@ public sealed class JobScorerTests
     [Fact]
     public void Score_stack_matches_add_3_each()
     {
-        var result = Score(description: "C# with Redis, MSSQL and Entity Framework, tested with xUnit.");
+        var result = Score(description: ".NET and C# with Redis, MSSQL and Entity Framework, tested with xUnit.");
 
         Assert.Equal(BaseExpected + 12, result.Score);
         Assert.Contains("stack: Redis, SQL Server, EF Core, xUnit (+12)", result.Reasons);
@@ -333,7 +396,7 @@ public sealed class JobScorerTests
     [Fact]
     public void Score_stack_matches_are_capped_at_15()
     {
-        var result = Score(description: "C#, microservices, Kafka, RabbitMQ, Redis, PostgreSQL, GraphQL, Keycloak, event-driven.");
+        var result = Score(description: ".NET, C#, microservices, Kafka, RabbitMQ, Redis, PostgreSQL, GraphQL, Keycloak, event-driven.");
 
         Assert.Equal(BaseExpected + 15, result.Score);
         Assert.Contains("stack: microservices, Kafka, RabbitMQ, Redis, PostgreSQL, GraphQL, Keycloak, event-driven (+15)", result.Reasons);
@@ -342,7 +405,7 @@ public sealed class JobScorerTests
     [Fact]
     public void Score_gaps_subtract_3_each()
     {
-        var result = Score(description: "C# on AWS with Terraform.");
+        var result = Score(description: ".NET and C# on AWS with Terraform.");
 
         Assert.Equal(BaseExpected - 6, result.Score);
         Assert.Contains("gaps: AWS, Terraform (-6)", result.Reasons);
@@ -351,7 +414,7 @@ public sealed class JobScorerTests
     [Fact]
     public void Score_gaps_are_capped_at_minus_12()
     {
-        var result = Score(description: "C#, K8s, AWS, Azure, Terraform and Angular.");
+        var result = Score(description: ".NET, C#, K8s, AWS, Azure, Terraform and Angular.");
 
         Assert.Equal(BaseExpected - 12, result.Score);
         Assert.Contains("gaps: Kubernetes, AWS, Azure, Terraform, React (-12)", result.Reasons);
@@ -388,7 +451,7 @@ public sealed class JobScorerTests
     [InlineData("2+ years of SQL and 10+ years of C#", -15, "asks 10+ years (-15)")]
     public void Score_years_pattern_uses_largest_N(string description, int points, string reason)
     {
-        var result = Score(description: description);
+        var result = Score(description: $"{BaseDescription} {description}");
 
         Assert.Equal(BaseExpected + points, result.Score);
         Assert.Contains(reason, result.Reasons);
@@ -455,11 +518,11 @@ public sealed class JobScorerTests
         using var services = new ServiceCollection().AddJobScoring(configuration).BuildServiceProvider();
         var scorer = services.GetRequiredService<JobScorer>();
 
-        var java = scorer.Score(Job(title: BaseTitle, description: "We write Java."));
+        var java = scorer.Score(Job(title: BaseTitle, description: "We write Java on the Java platform."));
         var dotNet = scorer.Score(Job(title: BaseTitle, description: "We write C#."));
 
-        Assert.Equal(51, java.Score);
-        Assert.Equal(["no level in title (+1)"], java.Reasons);
+        Assert.Equal(50 + 25 + 1, java.Score);
+        Assert.Equal([".NET core: 2 mentions in the requirements (+25)", "no level in title (+1)"], java.Reasons);
         Assert.Equal(["not .NET"], dotNet.Reasons);
     }
 

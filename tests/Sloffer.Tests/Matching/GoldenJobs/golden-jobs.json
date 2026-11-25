@@ -18,24 +18,21 @@
     "title": "Senior .NET Backend Developer",
     "location": "Remote - Europe",
     "description": "<h3>About us</h3><p>We build B2B APIs for logistics companies.</p><h3>Requirements</h3><ul><li>4+ years of C# and ASP.NET Core</li><li>PostgreSQL</li><li>REST APIs and clean architecture</li></ul>",
-    "minScore": 75, "maxScore": 100,
-    "pending": "PR 2: .NET centrality"
+    "minScore": 75, "maxScore": 100
   },
   {
     "name": "spec: .NET only in nice to have",
     "title": "Software Engineer",
     "location": "Spain",
     "description": "<h3>Requirements</h3><ul><li>Strong Java and Spring Boot</li><li>PostgreSQL, Kafka</li></ul><h3>Nice to have</h3><ul><li>Experience with .NET</li></ul>",
-    "minScore": 1, "maxScore": 54, "reasonContains": ".NET only mentioned",
-    "pending": "PR 2: .NET centrality"
+    "minScore": 1, "maxScore": 54, "reasonContains": ".NET only mentioned"
   },
   {
     "name": "spec: Java developer (or .NET)",
     "title": "Java Developer (or .NET)",
     "location": "Germany",
     "description": "<p>Backend services in Java 21 with Spring Boot, PostgreSQL, Kafka, Redis, microservices and event-driven design.</p><p>4+ years of experience. Visa sponsorship available. We are a fintech.</p>",
-    "minScore": 1, "maxScore": 54, "reasonContains": ".NET only mentioned",
-    "pending": "PR 2: .NET centrality"
+    "minScore": 1, "maxScore": 54, "reasonContains": ".NET only mentioned"
   },
   {
     "name": "spec: junior C# developer",
@@ -99,16 +96,14 @@
     "title": "Senior Web Compatibility Engineer",
     "location": "Remote",
     "description": "<p>Debug website breakage in our browsers. Familiarity with our stack is a bonus: Swift/Kotlin/C#/C++/Python.</p><p>Expect to travel at least two times a year.</p>",
-    "minScore": 1, "maxScore": 54, "reasonContains": ".NET only mentioned",
-    "pending": "PR 2: .NET centrality"
+    "minScore": 1, "maxScore": 54, "reasonContains": ".NET only mentioned"
   },
   {
     "name": "real 2026-11-25: MongoDB solutions architect, C# in an e.g. language list",
     "title": "Senior Solutions Architect",
     "location": "",
     "description": "<p>Remote in EMEA. Experience with programming languages (e.g. C/C++, Java, C#) in a professional setting.</p><p>Microservices, Kafka, distributed systems.</p>",
-    "minScore": 1, "maxScore": 54, "reasonContains": ".NET only mentioned",
-    "pending": "PR 2: .NET centrality"
+    "minScore": 1, "maxScore": 54, "reasonContains": ".NET only mentioned"
   },
   {
     "name": "real 2026-11-25: Iits senior fullstack C# / React, remote Germany",
