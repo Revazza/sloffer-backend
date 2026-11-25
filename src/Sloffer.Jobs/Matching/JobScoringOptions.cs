@@ -30,7 +30,6 @@ public sealed class JobScoringOptions
     public string[]? NonEmeaLocations { get; set; }
     public string[]? RemoteTerms { get; set; }
 
-
     // Soft rules
     /// <summary>Starting score for jobs that pass every hard rule.</summary>
     public int BaseScore { get; set; } = 40;
