@@ -4,125 +4,263 @@
     "title": "Senior Manager, Engineering Operations",
     "location": "Remote, Europe",
     "description": "<p>You will run the teams that build our .NET and C# services on ASP.NET Core.</p>",
-    "minScore": 0, "maxScore": 0, "reasonContains": "role: manager"
+    "minScore": 0,
+    "maxScore": 0,
+    "reasonContains": "role: manager"
   },
   {
     "name": "spec: senior QA engineer",
     "title": "Senior QA Engineer (C#, Selenium)",
     "location": "Germany",
     "description": "<p>Write automated tests in C# with Selenium and NUnit.</p>",
-    "minScore": 0, "maxScore": 0, "reasonContains": "role: qa"
+    "minScore": 0,
+    "maxScore": 0,
+    "reasonContains": "role: qa"
   },
   {
     "name": "spec: ideal senior .NET backend job",
     "title": "Senior .NET Backend Developer",
     "location": "Remote - Europe",
     "description": "<h3>About us</h3><p>We build B2B APIs for logistics companies.</p><h3>Requirements</h3><ul><li>4+ years of C# and ASP.NET Core</li><li>PostgreSQL</li><li>REST APIs and clean architecture</li></ul>",
-    "minScore": 75, "maxScore": 100
+    "minScore": 75,
+    "maxScore": 100
   },
   {
     "name": "spec: .NET only in nice to have",
     "title": "Software Engineer",
     "location": "Spain",
     "description": "<h3>Requirements</h3><ul><li>Strong Java and Spring Boot</li><li>PostgreSQL, Kafka</li></ul><h3>Nice to have</h3><ul><li>Experience with .NET</li></ul>",
-    "minScore": 1, "maxScore": 54, "reasonContains": ".NET only mentioned"
+    "minScore": 1,
+    "maxScore": 54,
+    "reasonContains": ".NET only mentioned"
   },
   {
     "name": "spec: Java developer (or .NET)",
     "title": "Java Developer (or .NET)",
     "location": "Germany",
     "description": "<p>Backend services in Java 21 with Spring Boot, PostgreSQL, Kafka, Redis, microservices and event-driven design.</p><p>4+ years of experience. Visa sponsorship available. We are a fintech.</p>",
-    "minScore": 1, "maxScore": 54, "reasonContains": ".NET only mentioned"
+    "minScore": 1,
+    "maxScore": 54,
+    "reasonContains": ".NET only mentioned"
   },
   {
     "name": "spec: junior C# developer",
     "title": "Junior C# Developer",
     "location": "Poland",
     "description": "<p>C#, .NET, SQL Server.</p>",
-    "minScore": 0, "maxScore": 0, "reasonContains": "role: junior"
+    "minScore": 0,
+    "maxScore": 0,
+    "reasonContains": "role: junior"
   },
   {
     "name": "spec: staff engineer C# is penalised, not rejected, not excellent",
     "title": "Staff Engineer, C#",
     "location": "Remote, Europe",
     "description": "<h3>Requirements</h3><ul><li>C# and ASP.NET Core</li><li>PostgreSQL</li></ul>",
-    "minScore": 1, "maxScore": 74, "reasonContains": "staff"
+    "minScore": 1,
+    "maxScore": 74,
+    "reasonContains": "staff"
   },
   {
     "name": "spec: data engineer with C# a plus",
     "title": "Data Engineer (C# a plus)",
     "location": "Netherlands",
     "description": "<p>Spark, Python and SQL pipelines. C# is a plus.</p>",
-    "minScore": 0, "maxScore": 0, "reasonContains": "role: data engineer"
+    "minScore": 0,
+    "maxScore": 0,
+    "reasonContains": "role: data engineer"
   },
   {
     "name": "real 2026-11-25: Tide fraud analytics manager, .NET only in an asset URL",
     "title": "Senior Manager, Fraud Analytics, OM, UK/EU",
     "location": "",
     "description": "<p>Tide is the leading business financial platform in the UK. Remote across the UK/EU.</p><p>7+ years experience in analytics, financial crime experience preferred.</p><img src=\"https://assets.ctfassets.net/3h69mkdgxn/logo.png\">",
-    "minScore": 0, "maxScore": 0, "reasonContains": "role: manager"
+    "minScore": 0,
+    "maxScore": 0,
+    "reasonContains": "role: manager"
   },
   {
     "name": "real 2026-11-25: NICE support engineer with C# among scripting languages",
     "title": "Senior Advanced Support Engineer",
     "location": "",
     "description": "<p>Fight financial crime. Remote in EMEA. 5+ years. Knowledge of programming or advanced scripting (C#, PowerShell, Python).</p>",
-    "minScore": 0, "maxScore": 0, "reasonContains": "role: support"
+    "minScore": 0,
+    "maxScore": 0,
+    "reasonContains": "role: support"
   },
   {
     "name": "real 2026-11-25: GoDaddy account executive",
     "title": "Enterprise Account Executive - EU",
     "location": "",
     "description": "<p>Remote in EMEA, 20% travel. See aboutus.godaddy.net. Familiar with C# shops.</p>",
-    "minScore": 0, "maxScore": 0, "reasonContains": "role: account executive"
+    "minScore": 0,
+    "maxScore": 0,
+    "reasonContains": "role: account executive"
   },
   {
     "name": "real 2026-11-25: Reactive Markets regulatory lead",
     "title": "Regulatory Lead",
     "location": "Remote",
     "description": "<p>OTC Trading Platform of the Year (Risk.net). We use C# and .NET. Fintech, relocation support.</p>",
-    "minScore": 0, "maxScore": 0, "reasonContains": "role: title is not an engineering role"
+    "minScore": 0,
+    "maxScore": 0,
+    "reasonContains": "role: title is not an engineering role"
   },
   {
     "name": "real 2026-11-25: Reactive Markets AI & data engineer",
     "title": "AI & Data Engineer",
     "location": "Remote",
     "description": "<p>Python, PostgreSQL, Kubernetes. Our trading platform is built in C# and .NET. Fintech, relocation.</p>",
-    "minScore": 0, "maxScore": 0, "reasonContains": "role: data engineer"
+    "minScore": 0,
+    "maxScore": 0,
+    "reasonContains": "role: data engineer"
   },
   {
     "name": "real 2026-11-25: DuckDuckGo web compatibility engineer, C# only in a bonus list",
     "title": "Senior Web Compatibility Engineer",
     "location": "Remote",
     "description": "<p>Debug website breakage in our browsers. Familiarity with our stack is a bonus: Swift/Kotlin/C#/C++/Python.</p><p>Expect to travel at least two times a year.</p>",
-    "minScore": 1, "maxScore": 54, "reasonContains": ".NET only mentioned"
+    "minScore": 1,
+    "maxScore": 54,
+    "reasonContains": ".NET only mentioned"
   },
   {
     "name": "real 2026-11-25: MongoDB solutions architect, C# in an e.g. language list",
     "title": "Senior Solutions Architect",
     "location": "",
     "description": "<p>Remote in EMEA. Experience with programming languages (e.g. C/C++, Java, C#) in a professional setting.</p><p>Microservices, Kafka, distributed systems.</p>",
-    "minScore": 1, "maxScore": 54, "reasonContains": ".NET only mentioned"
+    "minScore": 1,
+    "maxScore": 54,
+    "reasonContains": ".NET only mentioned"
   },
   {
     "name": "real 2026-11-25: Iits senior fullstack C# / React, remote Germany",
     "title": "Senior Fullstack Engineer (all genders) mit Fokus C# / React (all genders) - 100 % Remote",
     "location": "Remote Deutschland",
     "description": "<h3>Dein Profil</h3><ul><li>C# und .NET 8</li><li>EF Core</li><li>React, Azure</li></ul>",
-    "minScore": 55, "maxScore": 100
+    "minScore": 55,
+    "maxScore": 100
   },
   {
     "name": "real 2026-11-25: LastPass senior backend engineer (.NET), Portugal",
     "title": "Senior Backend Engineer (.NET)",
     "location": "Portugal",
     "description": "<h3>Requirements</h3><ul><li>C# and .NET</li><li>EF Core</li><li>AWS, some React</li></ul>",
-    "minScore": 55, "maxScore": 100
+    "minScore": 55,
+    "maxScore": 100,
+    "source": "jobicy"
   },
   {
     "name": "real 2026-11-25: CCS Connects software engineer (.NET), Woerden NL",
     "title": "Software Engineer (.NET)",
     "location": "Woerden, Utrecht, Nederland",
     "description": "<p>Je bouwt applicaties in C# en .NET met SQL Server.</p>",
-    "minScore": 55, "maxScore": 100
+    "minScore": 55,
+    "maxScore": 100
+  },
+  {
+    "name": "v3: German-language listing",
+    "title": "Senior .NET Entwickler (m/w/d)",
+    "location": "Berlin, Deutschland",
+    "description": "<p>Wir suchen einen erfahrenen .NET Entwickler für unser Team in Berlin. Du arbeitest mit C# und ASP.NET Core an unserer Plattform und bist für die Entwicklung von Schnittstellen und die Pflege der Datenbank verantwortlich. Wir bieten dir ein modernes Büro, flexible Arbeitszeiten und ein tolles Team, das sich auf dich freut.</p>",
+    "minScore": 0,
+    "maxScore": 0,
+    "reasonContains": "language: listing is in German"
+  },
+  {
+    "name": "real 2026-11-25: Infomedics .Net Ontwikkelaar, Dutch-language listing",
+    "title": ".Net Ontwikkelaar",
+    "location": "Dordrecht, Zuid-Holland, Nederland",
+    "description": "<p>Wij zoeken een .NET ontwikkelaar die met ons team aan de software van Infomedics werkt. Je bouwt nieuwe functionaliteit in C# en .NET en je werkt samen met de andere ontwikkelaars aan de kwaliteit van onze applicaties. Wij bieden een goed salaris, een fijne werkplek en veel ruimte voor jouw ontwikkeling bij een groeiend bedrijf.</p>",
+    "minScore": 0,
+    "maxScore": 0,
+    "reasonContains": "language: listing is in Dutch"
+  },
+  {
+    "name": "v3: English listing that requires fluent German",
+    "title": "Senior .NET Developer",
+    "location": "Munich, Germany",
+    "description": "<h3>Requirements</h3><ul><li>4+ years of C# and ASP.NET Core</li><li>PostgreSQL and REST APIs</li><li>Clean code and automated tests</li></ul><p>Fluent German (C1) is required for daily work with our customers. We offer relocation support.</p>",
+    "minScore": 0,
+    "maxScore": 0,
+    "reasonContains": "language: requires German"
+  },
+  {
+    "name": "v3: German only a plus is fine",
+    "title": "Senior .NET Developer",
+    "location": "Remote - Europe",
+    "description": "<h3>Requirements</h3><ul><li>4+ years of C# and ASP.NET Core</li><li>PostgreSQL and REST APIs</li><li>Clean code and automated tests</li></ul><p>German is a plus but not required.</p>",
+    "minScore": 75,
+    "maxScore": 100
+  },
+  {
+    "name": "v3: Go title with some C#",
+    "title": "Senior Go Engineer",
+    "location": "Remote - Europe",
+    "description": "<p>Golang microservices on Kubernetes. Some legacy C# services on .NET too.</p>",
+    "minScore": 0,
+    "maxScore": 0,
+    "reasonContains": "stack: Go"
+  },
+  {
+    "name": "v3: Rust title with .NET interop",
+    "title": "Senior Rust Developer",
+    "location": "Remote - Europe",
+    "description": "<p>Rust services with .NET interop from C# clients.</p>",
+    "minScore": 0,
+    "maxScore": 0,
+    "reasonContains": "stack: Rust"
+  },
+  {
+    "name": "v3: .NET core plus required Python ranks below pure .NET",
+    "title": "Senior Backend Engineer (.NET)",
+    "location": "Remote - Europe",
+    "description": "<h3>Requirements</h3><ul><li>C# and ASP.NET Core</li><li>Python for our data pipelines</li><li>PostgreSQL</li></ul>",
+    "minScore": 55,
+    "maxScore": 79,
+    "reasonContains": "also requires Python"
+  },
+  {
+    "name": "real 2026-11-25: SwissPeak senior .NET developer on-site in Luzern, no relocation",
+    "title": "Senior .NET Developer",
+    "location": "Luzern, Luzern, Switzerland",
+    "description": "<h3>Your profile</h3><ul><li>C# and .NET, EF Core, xUnit</li><li>Microservices and Kafka</li><li>Azure and Kubernetes</li></ul><p>Work from our office in Luzern.</p>",
+    "minScore": 1,
+    "maxScore": 70,
+    "reasonContains": "on-site"
+  },
+  {
+    "name": "v3: on-site Amsterdam with relocation and visa is excellent",
+    "title": "Senior .NET Developer",
+    "location": "Amsterdam",
+    "description": "<h3>Requirements</h3><ul><li>4+ years of C# and ASP.NET Core</li><li>PostgreSQL and REST APIs</li><li>Clean code and automated tests</li></ul><p>We offer relocation support and visa sponsorship.</p>",
+    "minScore": 75,
+    "maxScore": 100
+  },
+  {
+    "name": "v3: hybrid Berlin without relocation is capped",
+    "title": "Senior .NET Developer",
+    "location": "Berlin (Hybrid)",
+    "description": "<h3>Requirements</h3><ul><li>4+ years of C# and ASP.NET Core</li><li>PostgreSQL and REST APIs</li><li>Clean code and automated tests</li></ul><p>Hybrid: three days a week in our Berlin office.</p>",
+    "minScore": 1,
+    "maxScore": 70,
+    "reasonContains": "on-site"
+  },
+  {
+    "name": "v3: fully remote in the description counts as remote",
+    "title": "Senior .NET Developer",
+    "location": "Amsterdam",
+    "description": "<h3>Requirements</h3><ul><li>4+ years of C# and ASP.NET Core</li><li>PostgreSQL and REST APIs</li><li>Clean code and automated tests</li></ul><p>This role is fully remote within the Netherlands.</p>",
+    "minScore": 75,
+    "maxScore": 100
+  },
+  {
+    "name": "v3: Jobicy listing is remote by definition",
+    "source": "jobicy",
+    "title": "Senior .NET Developer",
+    "location": "Portugal",
+    "description": "<h3>Requirements</h3><ul><li>4+ years of C# and ASP.NET Core</li><li>PostgreSQL and REST APIs</li><li>Clean code and automated tests</li></ul>",
+    "minScore": 75,
+    "maxScore": 100
   }
 ]

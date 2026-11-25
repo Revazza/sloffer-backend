@@ -18,7 +18,7 @@ public sealed record ScoreResult(int Score, IReadOnlyList<string> Reasons, int V
 public sealed partial class JobScorer
 {
     /// <summary>Bump when the rules change, so <see cref="JobRescoreService"/> rescores stored jobs.</summary>
-    public const int Version = 6;
+    public const int Version = 7;
 
     private readonly JobScoringOptions _options;
     private readonly TermMatcher _roleReject;
@@ -28,6 +28,12 @@ public sealed partial class JobScorer
     private readonly TermMatcher _otherLanguage;
     private readonly TermMatcher _alternativeList;
     private readonly TermMatcher _weakMarker;
+    private readonly Dictionary<string, HashSet<string>> _stopwords;
+    private readonly (string Language, TermMatcher Matcher)[] _requiredSpoken;
+    private readonly TermMatcher _titleOtherLanguage;
+    private readonly HashSet<string> _remoteOnlySources;
+    private readonly TermMatcher _remoteDescription;
+    private readonly TermMatcher _hybrid;
     private readonly TermMatcher _emea;
     private readonly TermMatcher _nonEmea;
     private readonly TermMatcher _remote;
@@ -53,6 +59,16 @@ public sealed partial class JobScorer
         _otherLanguage = new TermMatcher(o.OtherLanguageTerms ?? JobScoringDefaults.OtherLanguageTerms);
         _alternativeList = new TermMatcher(o.AlternativeListTerms ?? JobScoringDefaults.AlternativeListTerms);
         _weakMarker = new TermMatcher(o.WeakMarkerTerms ?? JobScoringDefaults.WeakMarkerTerms);
+        _stopwords = (o.ListingLanguageStopwords ?? JobScoringDefaults.ListingLanguageStopwords)
+            .ToDictionary(l => l.Key, l => l.Value.Select(w => w.ToLowerInvariant()).ToHashSet());
+        _requiredSpoken = (o.RequiredSpokenLanguageTerms ?? JobScoringDefaults.RequiredSpokenLanguageTerms)
+            .Select(l => (l.Key, new TermMatcher(l.Value)))
+            .ToArray();
+        _titleOtherLanguage = new TermMatcher(o.TitleOtherLanguageTerms ?? JobScoringDefaults.TitleOtherLanguageTerms);
+        _remoteOnlySources = (o.RemoteOnlySources ?? JobScoringDefaults.RemoteOnlySources)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        _remoteDescription = new TermMatcher(o.RemoteDescriptionTerms ?? JobScoringDefaults.RemoteDescriptionTerms);
+        _hybrid = new TermMatcher(o.HybridTerms ?? JobScoringDefaults.HybridTerms);
         _emea = new TermMatcher(o.EmeaLocations ?? JobScoringDefaults.EmeaLocations);
         _nonEmea = new TermMatcher(o.NonEmeaLocations ?? JobScoringDefaults.NonEmeaLocations);
         _remote = new TermMatcher(o.RemoteTerms ?? JobScoringDefaults.RemoteTerms);
@@ -80,6 +96,17 @@ public sealed partial class JobScorer
         // The title decides what the job is: the description never turns a non-engineering role into a match.
         if (CheckRole(title) is { } role)
             failures.Add(role);
+
+        // Sandro reads English: a listing in another language, or one that requires another spoken language, is out.
+        var structured = StructuredText(job.Description);
+        if (CheckListingLanguage($"{title}\n{description}") is { } listingLanguage)
+            failures.Add(listingLanguage);
+        else if (CheckRequiredSpokenLanguage(structured) is { } spokenLanguage)
+            failures.Add(spokenLanguage);
+
+        // Another stack in the title ("Go Engineer") is not a .NET job, whatever the description says.
+        if (_titleOtherLanguage.FirstMatch(title) is { } otherStack && !_dotNet.Any(title))
+            failures.Add($"stack: {otherStack}");
 
         if (!_dotNet.Any(text))
             failures.Add("not .NET");
@@ -138,10 +165,17 @@ public sealed partial class JobScorer
         if (gaps.Count > 0)
             Apply(Math.Max(gaps.Count * o.GapPointsEach, o.GapPointsMin), $"gaps: {string.Join(", ", gaps)}");
 
-        if (_visaRelocation.Any(text))
+        var otherLanguages = OtherCoreLanguages(title, structured);
+        if (centrality.Core && otherLanguages.Count > 0)
+            Apply(Math.Max(otherLanguages.Count * o.OtherCoreLanguagePoints, o.OtherCoreLanguagePointsMin),
+                $"also requires {string.Join(", ", otherLanguages)}");
+
+        var relocation = _visaRelocation.Any(text);
+        if (relocation)
             Apply(o.VisaRelocationPoints, "visa sponsorship or relocation mentioned");
 
-        if (region.Remote)
+        var remote = IsRemote(job, title, description, location, region.Remote);
+        if (remote)
             Apply(o.RemotePoints, "remote in EMEA");
 
         if (MaxYears(text) is { } years)
@@ -155,6 +189,13 @@ public sealed partial class JobScorer
 
         if (!centrality.Core)
             score = Math.Min(score, o.DotNetMentionedMaxScore);
+
+        // Excellent needs remote work in EMEA, or relocation / visa support.
+        if (!remote && !relocation && o.OnSiteMaxScore < 100)
+        {
+            reasons.Add($"on-site or hybrid without relocation support; score capped at {o.OnSiteMaxScore}");
+            score = Math.Min(score, o.OnSiteMaxScore);
+        }
 
         return new ScoreResult(Math.Clamp(score, 0, 100), reasons, Version);
     }
@@ -198,6 +239,72 @@ public sealed partial class JobScorer
         }
 
         return count;
+    }
+
+    /// <summary>
+    /// Other languages that are a hard requirement too: a strong mention (not in an alternatives list, not nice to
+    /// have, not after a weak heading) in the title or the description.
+    /// </summary>
+    private IReadOnlyList<string> OtherCoreLanguages(string title, string description)
+    {
+        var weakFrom = WeakSectionStart(description);
+        var names = new List<string>();
+        foreach (var (text, limit) in new[] { (title, int.MaxValue), (description, weakFrom) })
+        {
+            foreach (var (position, name) in _otherLanguage.Hits(text))
+            {
+                if (position >= limit || names.Contains(name))
+                    continue;
+                var clause = ClauseAround(text, position);
+                if (_weakMarker.Any(clause) || _alternativeList.Any(clause) || clause.Contains('/'))
+                    continue;
+                names.Add(name);
+            }
+        }
+
+        return names;
+    }
+
+    /// <summary>"language: listing is in German" when most stop words are from another language than the configured one.</summary>
+    private string? CheckListingLanguage(string text)
+    {
+        var words = WordRegex().Matches(text).Select(m => m.Value.ToLowerInvariant()).ToList();
+        if (words.Count < _options.ListingLanguageMinWords)
+            return null;
+
+        var counts = _stopwords.ToDictionary(l => l.Key, l => words.Count(l.Value.Contains));
+        var expected = counts.GetValueOrDefault(_options.ListingLanguage);
+        var (language, count) = counts
+            .Where(c => c.Key != _options.ListingLanguage)
+            .OrderByDescending(c => c.Value)
+            .Select(c => (c.Key, c.Value))
+            .FirstOrDefault();
+
+        return language is not null && count > expected ? $"language: listing is in {language}" : null;
+    }
+
+    /// <summary>"language: requires German" when a clause asks for that spoken language and does not call it a plus.</summary>
+    private string? CheckRequiredSpokenLanguage(string text)
+    {
+        foreach (var (language, matcher) in _requiredSpoken)
+        {
+            foreach (var position in matcher.Positions(text))
+            {
+                if (!_weakMarker.Any(ClauseAround(text, position)))
+                    return $"language: requires {language}";
+            }
+        }
+
+        return null;
+    }
+
+    private bool IsRemote(FetchedJob job, string title, string description, string location, bool regionRemote)
+    {
+        if (regionRemote || _remoteOnlySources.Contains(job.Source))
+            return true;
+        if (_hybrid.Any(title) || _hybrid.Any(location))
+            return false;
+        return _remoteDescription.Any(description);
     }
 
     /// <summary>
@@ -321,6 +428,9 @@ public sealed partial class JobScorer
 
     [GeneratedRegex("<[^>]*>")]
     private static partial Regex TagRegex();
+
+    [GeneratedRegex(@"\p{L}+")]
+    private static partial Regex WordRegex();
 
     [GeneratedRegex(@"</?(?:p|li|ul|ol|div|h[1-6]|tr|br)\b[^>]*>", RegexOptions.IgnoreCase)]
     private static partial Regex BlockTagRegex();

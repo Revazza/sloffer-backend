@@ -16,7 +16,7 @@ public static class JobScoringServiceCollectionExtensions
         services.AddOptions<JobScoringOptions>()
             .Bind(configuration.GetSection(JobScoringOptions.SectionName))
             .Validate(o => o.IsValid(),
-                "JobScoring: RescoreBatchSize must be > 0, BaseScore 0-100, StackPointsMax >= 0, GapPointsMin <= 0, FewYearsMax < ManyYearsMin <= TooManyYearsMin, DotNetCoreMinMentions >= 1 and DotNetMentionedMaxScore 0-100.")
+                "JobScoring: RescoreBatchSize must be > 0, BaseScore 0-100, StackPointsMax >= 0, GapPointsMin <= 0, FewYearsMax < ManyYearsMin <= TooManyYearsMin, DotNetCoreMinMentions >= 1, DotNetMentionedMaxScore and OnSiteMaxScore 0-100, OtherCoreLanguagePointsMin <= 0 and ListingLanguageMinWords >= 0.")
             .ValidateOnStart();
 
         services.TryAddSingleton(TimeProvider.System);

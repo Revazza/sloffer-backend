@@ -26,7 +26,7 @@ public sealed class JobScorerTests
         Assert.Equal(BaseExpected, result.Score);
         Assert.Equal([CoreReason, "no level in title (+5)"], result.Reasons);
         Assert.Equal(JobScorer.Version, result.Version);
-        Assert.Equal(6, JobScorer.Version);
+        Assert.Equal(7, JobScorer.Version);
     }
 
     [Fact]
@@ -54,8 +54,8 @@ public sealed class JobScorerTests
     // ---- Hard rule: .NET ----
 
     [Theory]
-    [InlineData("Java Developer", "We write Java and Kotlin.")]
-    [InlineData("Go Engineer", "Experience with ObjC# is a plus.")]
+    [InlineData("Backend Developer", "We write Java and Kotlin.")]
+    [InlineData("Backend Engineer", "Experience with ObjC# is a plus.")]
     [InlineData("Network Engineer", "Manage example.network domains.")]
     [InlineData("Backend Engineer", "eFX Trading Platform of the Year (Risk.net).")]
     [InlineData("Backend Engineer", "<img src=\"https://assets.ctfassets.net/3h69/logo.png\">See https://images.ctfassets.net/x.png")]
@@ -223,6 +223,41 @@ public sealed class JobScorerTests
         Assert.DoesNotContain(Score(title: title).Reasons, r => r.StartsWith("role:", StringComparison.Ordinal));
     }
 
+    // ---- v3: listing language, location fit (real defaults) ----
+
+    [Fact]
+    public void Score_short_text_skips_the_listing_language_check()
+    {
+        var result = Score(description: "Wir schreiben C# und .NET.");
+
+        Assert.DoesNotContain(result.Reasons, r => r.StartsWith("language:", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Score_french_listing_is_rejected()
+    {
+        var result = Score(
+            title: "Développeur .NET",
+            location: "Paris, France",
+            description: "<p>Nous recherchons un développeur .NET pour notre équipe. Vous travaillez avec C# et ASP.NET Core sur nos applications et vous êtes responsable de la qualité du code. Nous offrons un poste en CDI avec des avantages pour nos équipes et une ambiance agréable dans nos bureaux.</p>");
+
+        Assert.Equal(0, result.Score);
+        Assert.Contains("language: listing is in French", result.Reasons);
+    }
+
+    [Fact]
+    public void Score_remote_only_source_counts_as_remote_and_is_not_capped()
+    {
+        var scorer = CreateScorer(new JobScoringOptions());
+        var job = Job(title: "Senior .NET Developer", location: "Spain", description: "<p>C# and ASP.NET Core. Fintech.</p>") with { Source = "Remote OK" };
+
+        var result = scorer.Score(job);
+
+        Assert.Contains("remote in EMEA (+6)", result.Reasons);
+        Assert.DoesNotContain(result.Reasons, r => r.StartsWith("on-site", StringComparison.Ordinal));
+        Assert.True(result.Score >= 75, $"score {result.Score}");
+    }
+
     // ---- Seniority: staff / principal are a penalty, not a reject ----
 
     [Theory]
@@ -260,7 +295,7 @@ public sealed class JobScorerTests
         var result = Score(title: "Junior Java Developer", location: "USA", description: "Java only.");
 
         Assert.Equal(0, result.Score);
-        Assert.Equal(["role: junior", "not .NET", "location outside EMEA (USA)"], result.Reasons);
+        Assert.Equal(["role: junior", "stack: Java", "not .NET", "location outside EMEA (USA)"], result.Reasons);
     }
 
     // ---- Soft rules ----
@@ -483,7 +518,7 @@ public sealed class JobScorerTests
     [Fact]
     public void Score_is_clamped_at_100()
     {
-        var scorer = CreateScorer(new JobScoringOptions { BaseScore = 95 });
+        var scorer = CreateScorer(new JobScoringOptions { BaseScore = 95, OnSiteMaxScore = 100 });
 
         var result = scorer.Score(Job(title: "Mid .NET Developer"));
 
@@ -524,18 +559,19 @@ public sealed class JobScorerTests
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["JobScoring:BaseScore"] = "50",
+                ["JobScoring:OnSiteMaxScore"] = "100",
                 ["JobScoring:NoLevelPoints"] = "1",
-                ["JobScoring:DotNetTerms:0"] = "Java",
+                ["JobScoring:DotNetTerms:0"] = "Fortran",
             })
             .Build();
         using var services = new ServiceCollection().AddJobScoring(configuration).BuildServiceProvider();
         var scorer = services.GetRequiredService<JobScorer>();
 
-        var java = scorer.Score(Job(title: BaseTitle, description: "We write Java on the Java platform."));
+        var fortran = scorer.Score(Job(title: BaseTitle, description: "We write Fortran on the Fortran platform."));
         var dotNet = scorer.Score(Job(title: BaseTitle, description: "We write C#."));
 
-        Assert.Equal(50 + 25 + 1, java.Score);
-        Assert.Equal([".NET core: 2 mentions in the requirements (+25)", "no level in title (+1)"], java.Reasons);
+        Assert.Equal(50 + 25 + 1, fortran.Score);
+        Assert.Equal([".NET core: 2 mentions in the requirements (+25)", "no level in title (+1)"], fortran.Reasons);
         Assert.Equal(["not .NET"], dotNet.Reasons);
     }
 
@@ -560,6 +596,8 @@ public sealed class JobScorerTests
         new("test", "1", "https://example.test/1", title, "Example Co", location, "Full-Time", null, description,
             new DateTimeOffset(2026, 11, 24, 12, 0, 0, TimeSpan.Zero));
 
+    // Unit tests isolate one rule each on an on-site baseline job ("Spain"), so the on-site cap is lifted here.
+    // The v3 location tests and the golden examples use the real defaults.
     private static JobScorer CreateScorer(JobScoringOptions? options = null) =>
-        new(Options.Create(options ?? new JobScoringOptions()));
+        new(Options.Create(options ?? new JobScoringOptions { OnSiteMaxScore = 100 }));
 }

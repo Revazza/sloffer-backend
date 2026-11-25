@@ -25,6 +25,17 @@ public sealed class JobScoringOptions
     /// <summary>A title must contain one of these to count as an engineering role.</summary>
     public string[]? EngineeringTitleTerms { get; set; }
 
+    /// <summary>Stop words per language. A listing whose words are mostly from a language other than <see cref="ListingLanguage"/> is rejected.</summary>
+    public Dictionary<string, string[]>? ListingLanguageStopwords { get; set; }
+    /// <summary>The language listings must be written in (a key of <see cref="ListingLanguageStopwords"/>).</summary>
+    public string ListingLanguage { get; set; } = "English";
+    /// <summary>Texts with fewer words than this skip the listing-language check.</summary>
+    public int ListingLanguageMinWords { get; set; } = 25;
+    /// <summary>Phrases per spoken language that make it a requirement ("fluent German"); rejected unless the clause says it is only a plus.</summary>
+    public Dictionary<string, string[]>? RequiredSpokenLanguageTerms { get; set; }
+    /// <summary>A title naming one of these and no .NET term is another stack ("Go Engineer"): rejected.</summary>
+    public string[]? TitleOtherLanguageTerms { get; set; }
+
     public string[]? DotNetTerms { get; set; }
     public string[]? EmeaLocations { get; set; }
     public string[]? NonEmeaLocations { get; set; }
@@ -47,6 +58,21 @@ public sealed class JobScoringOptions
     public string[]? AlternativeListTerms { get; set; }
     /// <summary>"Nice to have" markers: a clause with one is weak, and a short heading line with one makes the rest weak.</summary>
     public string[]? WeakMarkerTerms { get; set; }
+
+    /// <summary>Points per other language that is a hard requirement next to core .NET ("C# and Python").</summary>
+    public int OtherCoreLanguagePoints { get; set; } = -8;
+    /// <summary>Lowest total of the other-core-language rule (a negative number).</summary>
+    public int OtherCoreLanguagePointsMin { get; set; } = -16;
+
+    // Location fit: Excellent needs remote work in EMEA, or relocation / visa support.
+    /// <summary>Highest score for an on-site or hybrid job without relocation or visa support. 100 turns the rule off.</summary>
+    public int OnSiteMaxScore { get; set; } = 70;
+    /// <summary>Sources that only list remote jobs (their location is where the remote worker may live).</summary>
+    public string[]? RemoteOnlySources { get; set; }
+    /// <summary>Description phrases that make a job remote even when the location is a city.</summary>
+    public string[]? RemoteDescriptionTerms { get; set; }
+    /// <summary>Title or location words that mean hybrid (not remote).</summary>
+    public string[]? HybridTerms { get; set; }
 
     // Seniority fit (about 4 years, mid to senior): senior, mid and a plain title fit equally well.
     public string[]? SeniorTerms { get; set; }
@@ -98,7 +124,10 @@ public sealed class JobScoringOptions
         && FewYearsMax < ManyYearsMin
         && ManyYearsMin <= TooManyYearsMin
         && DotNetCoreMinMentions >= 1
-        && DotNetMentionedMaxScore is >= 0 and <= 100;
+        && DotNetMentionedMaxScore is >= 0 and <= 100
+        && OnSiteMaxScore is >= 0 and <= 100
+        && OtherCoreLanguagePointsMin <= 0
+        && ListingLanguageMinWords >= 0;
 }
 
 /// <summary>Default term lists for <see cref="JobScoringOptions"/>.</summary>
@@ -135,6 +164,53 @@ public static class JobScoringDefaults
     ];
 
     public static readonly string[] DotNetTerms = [".NET", "dotnet", "C#", "ASP.NET"];
+
+    // Distinctive stop words only: words shared between languages ("in", "die", "als") are left out.
+    public static readonly Dictionary<string, string[]> ListingLanguageStopwords = new()
+    {
+        ["English"] =
+            ["the", "and", "you", "with", "for", "our", "we", "will", "are", "to", "of", "is", "your", "on", "as", "be", "this", "or", "us", "have"],
+        ["German"] =
+            ["und", "der", "das", "wir", "mit", "für", "sie", "ist", "ein", "eine", "einen", "bei", "auf", "oder", "zu", "von", "du", "dich", "dir", "dein", "deine", "unser", "unsere", "uns", "ihr", "ihre", "nicht", "auch", "sind", "werden", "wird", "im", "zum", "zur", "über", "sowie"],
+        ["Dutch"] =
+            ["het", "een", "van", "wij", "jouw", "jij", "je", "voor", "bij", "naar", "onze", "ook", "niet", "wordt", "worden", "zijn", "en", "met"],
+        ["French"] =
+            ["et", "le", "la", "les", "des", "nous", "vous", "pour", "avec", "une", "du", "sur", "est", "dans", "au", "aux", "votre", "vos", "notre", "nos", "qui", "que"],
+    };
+
+    public static readonly Dictionary<string, string[]> RequiredSpokenLanguageTerms = new()
+    {
+        ["German"] =
+        [
+            "fluent German", "fluency in German", "German speaker", "German-speaking", "German speaking",
+            "German language skills", "good German", "business German", "native German", "German (C1", "German (B2",
+            "German C1", "German B2", "German is required", "German is a must", "Deutschkenntnisse", "fließend Deutsch",
+            "fließendes Deutsch", "Deutsch fließend", "verhandlungssicheres Deutsch",
+        ],
+        ["Dutch"] =
+        [
+            "fluent Dutch", "fluency in Dutch", "Dutch speaker", "Dutch-speaking", "Dutch speaking", "Dutch language skills",
+            "native Dutch", "Dutch is required", "Dutch is a must", "Nederlandstalig", "vloeiend Nederlands",
+        ],
+        ["French"] =
+        [
+            "fluent French", "fluency in French", "French speaker", "French-speaking", "French speaking", "native French",
+            "French is required", "French is a must", "français courant",
+        ],
+    };
+
+    public static readonly string[] TitleOtherLanguageTerms =
+    [
+        "Go|Golang", "Rust", "Java", "Python", "Ruby|Rails", "PHP", "Scala", "Kotlin", "Elixir", "C++", "Node.js|NodeJS|Node",
+        "Swift", "Perl", "Clojure", "Haskell", "Erlang",
+    ];
+
+    public static readonly string[] RemoteOnlySources = ["jobicy", "Remotive", "Remote OK"];
+
+    public static readonly string[] RemoteDescriptionTerms =
+        ["fully remote|fully-remote", "100% remote|100 % remote", "remote-first|remote first", "work from anywhere", "remote within"];
+
+    public static readonly string[] HybridTerms = ["hybrid"];
 
     // "Go" is left out on purpose: it is also an English verb. "C" alone would match inside "C#".
     public static readonly string[] OtherLanguageTerms =
