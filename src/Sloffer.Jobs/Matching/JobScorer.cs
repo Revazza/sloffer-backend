@@ -18,7 +18,7 @@ public sealed record ScoreResult(int Score, IReadOnlyList<string> Reasons, int V
 public sealed partial class JobScorer
 {
     /// <summary>Bump when the rules change, so <see cref="JobRescoreService"/> rescores stored jobs.</summary>
-    public const int Version = 1;
+    public const int Version = 2;
 
     private readonly JobScoringOptions _options;
     private readonly TermMatcher _dotNet;

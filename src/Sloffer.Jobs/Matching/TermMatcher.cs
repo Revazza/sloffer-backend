@@ -4,8 +4,9 @@ namespace Sloffer.Jobs.Matching;
 
 /// <summary>
 /// Matches a fixed list of terms in text, case-insensitively, on word boundaries: a term never matches inside a
-/// longer word ("C#" does not match "ObjC#", "lead" does not match "leading"). Terms that start with a non-letter
-/// (".NET") may follow a word ("ASP.NET" contains ".NET"). Each entry may list synonyms as <c>"A|B"</c>.
+/// longer word ("C#" does not match "ObjC#", "lead" does not match "leading"). This holds for terms that start with a
+/// non-letter too: ".NET" does not match "risk.net" or "ASP.NET" (list "ASP.NET" as its own term). Each entry may list
+/// synonyms as <c>"A|B"</c>.
 /// </summary>
 internal sealed class TermMatcher
 {
@@ -38,7 +39,6 @@ internal sealed class TermMatcher
     private static string TermPattern(string term)
     {
         var body = Regex.Escape(term).Replace(@"\ ", @"\s+");
-        var left = char.IsLetterOrDigit(term[0]) ? $"(?<!{WordChar})" : "";
-        return $"(?:{left}{body}(?!{WordChar}))";
+        return $"(?:(?<!{WordChar}){body}(?!{WordChar}))";
     }
 }
