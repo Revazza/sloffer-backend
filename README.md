@@ -39,15 +39,21 @@ Defaults live in `JobFetchOptions`; override them in `src/Sloffer.Jobs/appsettin
 
 ### Sources
 
-**Jobicy** (`jobicy`, `Sources/Jobicy`): [public remote-jobs API](https://github.com/Jobicy/remote-jobs-api), no auth, called through the RestEase client `IJobicyApi` (`GET https://jobicy.com/api/v2/remote-jobs`). One request per fetch, no pagination. Jobicy has no date filter, so listings are filtered by `pubDate`. Jobicy asks for at most one poll per hour: the source's interval is forced to at least `01:00:00`, whatever `JobFetch:Sources:jobicy:MinInterval` says. HTTP errors (429, 5xx) throw `HttpRequestException`, so the fetcher logs and skips the source until its next run. Stored jobs keep `Source = jobicy` and the canonical Jobicy `url` (attribution).
+**Jobicy** (`jobicy`, `Sources/Jobicy`): [public remote-jobs API](https://github.com/Jobicy/remote-jobs-api), no auth, called through the RestEase client `IJobicyApi` (`GET https://jobicy.com/api/v2/remote-jobs`). Each fetch runs every query in `JobFetch:Jobicy:Queries` one after another (no pagination), waiting `DelayBetweenRequests` between requests, merges the results and drops repeats by Jobicy id (first one wins). Jobicy's `tag` is a literal text search: `tag=.net` finds .NET jobs, `dotnet`/`csharp` find nothing. Jobicy has no date filter, so listings are filtered by `pubDate`. Jobicy asks for at most one poll per hour: all queries together run at most once per interval, and the interval is forced to at least `01:00:00`, whatever `JobFetch:Sources:jobicy:MinInterval` says. A failing query (HTTP 429/5xx, timeout, bad body) is logged and skipped and the other queries' results are kept; only if every query fails does the fetch throw (`HttpRequestException` for HTTP errors), so the fetcher logs and skips the source until its next run. No retries. Stored jobs keep `Source = jobicy` and the canonical Jobicy `url` (attribution).
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
 | `JobFetch:Jobicy:Count` | `100` | Listings per request (1-200). |
-| `JobFetch:Jobicy:Geo` | `europe` | Region filter (`europe`, `usa`, `anywhere`, ...); empty = none. |
-| `JobFetch:Jobicy:Industry` | `engineering` | Industry filter; empty = none. |
+| `JobFetch:Jobicy:Queries` | see below | Up to 5 queries, each with optional `Geo` (region slug: `europe`, `usa`, `anywhere`, ...), `Industry` (e.g. `engineering`) and `Tag` (3-50 characters); at least one of them per query, blank values are omitted. Setting it replaces the whole default list. |
+| `JobFetch:Jobicy:DelayBetweenRequests` | `00:00:03` | Pause between two queries of one fetch (0 to 1 minute). |
 | `JobFetch:Jobicy:MinInterval` | `01:00:00` | Time between fetches; lower values fail at startup. |
 | `JobFetch:Jobicy:Timeout` | `00:00:30` | HTTP request timeout. |
+
+Default queries (in `JobicyOptions.DefaultQueries`): `geo=europe&industry=engineering`, `geo=europe&tag=.net`, `geo=anywhere&tag=.net`. Override example (`appsettings*.json`):
+
+```json
+"Jobicy": { "Queries": [ { "Geo": "europe", "Tag": ".net" }, { "Geo": "europe", "Industry": "engineering" } ] }
+```
 
 **Arbeitnow** (`Arbeitnow`, `Sources/Arbeitnow`): [public job board API](https://www.arbeitnow.com/blog/job-board-api), no auth, RestEase client `IArbeitnowClient` (`GET https://www.arbeitnow.com/api/job-board-api?page=N`, 300 listings per page, roughly newest first, `created_at` in Unix seconds); pages from 1 and stops after a page with no listing in the age window, on the last page or at `JobFetch:Arbeitnow:MaxPages` (default `5`, 1-20), waiting `JobFetch:Arbeitnow:DelayBetweenRequests` (default `00:00:02`) between pages, `JobFetch:Arbeitnow:Timeout` default `00:00:30`; keeps only listings whose title, tags or description contain one of `JobFetch:Arbeitnow:RequiredKeywords` (default `.NET`, `C#`, `dotnet`, `ASP.NET`; whole words, case-insensitive; `[]` disables the filter); remote listings get `Remote` in their location; interval via `JobFetch:Sources:Arbeitnow:MinInterval` (else the global `01:00:00`), no retries.
 
