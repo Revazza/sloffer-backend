@@ -191,9 +191,9 @@ public sealed class JobFetcherTests
 
         var stored = (await StoredJobsAsync(services, name)).ToDictionary(j => j.ExternalId);
         var fit = stored["fit"];
-        Assert.Equal(40 + 15 + 5 + 12 + 3 + 6, fit.Score);
+        Assert.Equal(40 + 25 + 5 + 12 + 3 + 6, fit.Score);
         Assert.Equal(
-            ["title mentions .NET/C# (+15)", "senior title (+5)", "domain: payments (+12)", "stack: Kafka (+3)", "remote in EMEA (+6)"],
+            [".NET core: in title (+25)", "senior title (+5)", "domain: payments (+12)", "stack: Kafka (+3)", "remote in EMEA (+6)"],
             fit.ScoreReasons);
         Assert.Equal(JobScorer.Version, fit.ScoreVersion);
         Assert.Equal(Start, fit.ScoredAt);
