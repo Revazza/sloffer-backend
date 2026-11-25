@@ -25,7 +25,7 @@ public sealed class GoldenJobsTests
         var golden = Load().Single(c => c.Name == name);
 
         var result = Scorer.Score(new FetchedJob(
-            "golden", name, "https://example.test/golden", golden.Title, "Example Co", golden.Location, "Full-Time",
+            golden.Source ?? "golden", name, "https://example.test/golden", golden.Title, "Example Co", golden.Location, "Full-Time",
             null, golden.Description, new DateTimeOffset(2026, 11, 25, 12, 0, 0, TimeSpan.Zero)));
 
         var because = $"{golden.Name}: score {result.Score}, reasons [{string.Join("; ", result.Reasons)}]";
@@ -72,5 +72,6 @@ public sealed class GoldenJobsTests
         int MinScore,
         int MaxScore,
         string? ReasonContains,
-        string? Pending);
+        string? Pending,
+        string? Source);
 }

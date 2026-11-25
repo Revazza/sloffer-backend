@@ -199,7 +199,7 @@ public sealed class JobFetcherTests
         Assert.Equal(Start, fit.ScoredAt);
         var rejected = stored["java"];
         Assert.Equal(0, rejected.Score);
-        Assert.Equal(["not .NET"], rejected.ScoreReasons);
+        Assert.Equal(["stack: Java", "not .NET"], rejected.ScoreReasons);
         Assert.Equal(JobScorer.Version, rejected.ScoreVersion);
     }
 
