@@ -25,7 +25,7 @@ public sealed class JobScorerTests
         Assert.Equal(BaseExpected, result.Score);
         Assert.Equal(["no level in title (+5)"], result.Reasons);
         Assert.Equal(JobScorer.Version, result.Version);
-        Assert.Equal(1, JobScorer.Version);
+        Assert.Equal(2, JobScorer.Version);
     }
 
     [Fact]
@@ -56,6 +56,9 @@ public sealed class JobScorerTests
     [InlineData("Java Developer", "We write Java and Kotlin.")]
     [InlineData("Go Engineer", "Experience with ObjC# is a plus.")]
     [InlineData("Network Engineer", "Manage example.network domains.")]
+    [InlineData("Regulatory Lead", "eFX Trading Platform of the Year (Risk.net).")]
+    [InlineData("Fraud Analyst", "<img src=\"https://assets.ctfassets.net/3h69/logo.png\">See https://images.ctfassets.net/x.png")]
+    [InlineData("Account Executive", "Read more at aboutus.godaddy.net/about-us")]
     public void Score_job_without_dotnet_returns_0_not_dotnet(string title, string description)
     {
         var result = Score(title: title, description: description);
@@ -69,6 +72,9 @@ public sealed class JobScorerTests
     [InlineData("Backend Developer", "dotnet and friends")]
     [InlineData("Backend Developer", "Strong c# skills.")]
     [InlineData("Backend Developer", "ASP.NET Core APIs")]
+    [InlineData("Backend Developer", "Web apps with C# / ASP.NET /.NET.")]
+    [InlineData("Backend Developer", "(.NET 8) services")]
+    [InlineData("Backend Developer", "Built on .net core.")]
     [InlineData("C# Developer", "")]
     [InlineData("Backend Developer", "<li>C&#35; and SQL</li>")]
     public void Score_dotnet_in_title_or_description_passes(string title, string description)
@@ -87,6 +93,15 @@ public sealed class JobScorerTests
     [InlineData("Worldwide")]
     [InlineData("Anywhere")]
     [InlineData("Tbilisi, Georgia")]
+    [InlineData("Woerden, Utrecht, Nederland")]
+    [InlineData("Oberkochen , Baden-Württemberg, Deutschland")]
+    [InlineData("Luzern, Luzern, Schweiz")]
+    [InlineData("London")]
+    [InlineData("Amsterdam")]
+    [InlineData("Stuttgart")]
+    [InlineData("München")]
+    [InlineData("Zürich")]
+    [InlineData("Kraków")]
     public void Score_location_in_emea_or_remote_passes(string location)
     {
         Assert.True(Score(location: location).Score > 0);
@@ -100,6 +115,8 @@ public sealed class JobScorerTests
     [InlineData("APAC", "location outside EMEA (APAC)")]
     [InlineData("Canada", "location outside EMEA (Canada)")]
     [InlineData("Singapore", "location not in EMEA (Singapore)")]
+    [InlineData("Porto Alegre, Brazil", "location outside EMEA (Brazil)")]
+    [InlineData("Berlington", "location not in EMEA (Berlington)")]
     public void Score_location_outside_emea_returns_0_with_reason(string location, string reason)
     {
         var result = Score(location: location);

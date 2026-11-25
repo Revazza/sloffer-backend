@@ -88,6 +88,21 @@ public static class JobScoringDefaults
         "Georgia", "Armenia", "Azerbaijan", "Turkey", "Türkiye", "Israel", "UAE", "United Arab Emirates", "Dubai",
         "Saudi Arabia", "Qatar", "Bahrain", "Kuwait", "Oman", "Jordan", "Egypt", "Morocco", "Tunisia",
         "South Africa", "Nigeria", "Kenya",
+        // Local-language country names, as some boards (Arbeitnow) write them.
+        "Deutschland", "Nederland", "België|Belgique", "Schweiz|Suisse|Svizzera", "Österreich", "España", "Italia",
+        "Polska", "Česko|Česká republika", "Magyarország", "România", "Sverige", "Norge", "Danmark", "Suomi", "Éire",
+        "Hrvatska", "Slovensko", "Slovenija", "Srbija", "Lietuva", "Latvija", "Eesti",
+        // Major cities, for listings that give only a city.
+        "London", "Manchester", "Edinburgh", "Dublin", "Berlin", "Munich|München", "Hamburg", "Frankfurt",
+        "Cologne|Köln", "Düsseldorf", "Stuttgart", "Nuremberg|Nürnberg", "Leipzig", "Dresden", "Hanover|Hannover",
+        "Bremen", "Karlsruhe", "Mannheim", "Amsterdam", "Rotterdam", "Utrecht", "The Hague|Den Haag", "Eindhoven",
+        "Brussels|Bruxelles|Brussel", "Antwerp|Antwerpen", "Paris", "Lyon", "Toulouse", "Nantes", "Lille", "Madrid",
+        "Barcelona", "Lisbon|Lisboa","Milan|Milano", "Rome|Roma", "Turin|Torino", "Vienna|Wien", "Graz",
+        "Zurich|Zürich", "Geneva|Genève", "Basel", "Bern", "Lausanne", "Lucerne|Luzern", "Warsaw|Warszawa",
+        "Krakow|Kraków", "Wroclaw|Wrocław", "Gdansk|Gdańsk", "Poznan|Poznań", "Prague|Praha", "Brno", "Budapest",
+        "Bucharest|București", "Sofia", "Belgrade|Beograd", "Zagreb", "Ljubljana", "Bratislava", "Athens", "Stockholm",
+        "Gothenburg|Göteborg", "Malmö", "Oslo", "Copenhagen|København", "Helsinki", "Tallinn", "Riga", "Vilnius",
+        "Kyiv|Kiev", "Lviv", "Tbilisi", "Yerevan", "Istanbul", "Tel Aviv", "Cairo", "Cape Town", "Lagos", "Nairobi",
     ];
 
     public static readonly string[] NonEmeaLocations =
