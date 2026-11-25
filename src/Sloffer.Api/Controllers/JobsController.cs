@@ -14,8 +14,8 @@ public sealed class JobsController(SlofferDbContext db, TimeProvider time, IOpti
     /// <summary>
     /// Recent jobs, filtered, sorted and paged in the database. By default sorted by score (highest first, unscored last,
     /// then newest, then Id); <c>sort=posted</c> sorts newest first. By default lists the whole job age window
-    /// (<c>JobFetch:MaxAgeDays</c>, 7 days by default), hides scored jobs below <c>minScore</c> (1, so score-0 jobs are
-    /// hidden) and hides duplicates (<c>includeDuplicates=true</c> shows them, with <c>duplicateOfId</c> pointing at the original).
+    /// (<c>JobFetch:MaxAgeDays</c>, 7 days by default), hides scored jobs below <c>minScore</c> (55, the "Good" band; score bands
+    /// are 75+ Excellent, 55-74 Good, 35-54 Maybe, 1-34 Weak, 0 rejected) and hides duplicates (<c>includeDuplicates=true</c> shows them, with <c>duplicateOfId</c> pointing at the original).
     /// </summary>
     [HttpGet]
     [ProducesResponseType<JobListResponse>(StatusCodes.Status200OK)]

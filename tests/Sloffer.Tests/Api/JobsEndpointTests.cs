@@ -350,18 +350,33 @@ public sealed class JobsEndpointTests(SlofferApiFactory factory)
     }
 
     [Fact]
-    public async Task List_by_default_hides_score_0_and_keeps_unscored_jobs()
+    public async Task List_by_default_shows_only_good_matches_55_plus_and_unscored_jobs()
     {
         var source = UniqueSource();
         await SeedAsync(
-            NewJob(source, "good", Now.AddHours(-1), score: 70),
-            NewJob(source, "rejected", Now.AddHours(-2), score: 0),
-            NewJob(source, "unscored", Now.AddHours(-3)));
+            NewJob(source, "excellent", Now.AddHours(-1), score: 80),
+            NewJob(source, "good-edge", Now.AddHours(-2), score: 55),
+            NewJob(source, "maybe", Now.AddHours(-3), score: 54),
+            NewJob(source, "rejected", Now.AddHours(-4), score: 0),
+            NewJob(source, "unscored", Now.AddHours(-5)));
 
         var body = await ListAsync($"source={source}");
 
-        Assert.Equal(["good", "unscored"], body.Items.Select(j => j.Title));
-        Assert.Equal(2, body.TotalCount);
+        Assert.Equal(["excellent", "good-edge", "unscored"], body.Items.Select(j => j.Title));
+        Assert.Equal(3, body.TotalCount);
+    }
+
+    [Fact]
+    public async Task List_minScore_1_hides_only_rejected_jobs()
+    {
+        var source = UniqueSource();
+        await SeedAsync(
+            NewJob(source, "maybe", Now.AddHours(-1), score: 40),
+            NewJob(source, "rejected", Now.AddHours(-2), score: 0));
+
+        var body = await ListAsync($"source={source}&minScore=1");
+
+        Assert.Equal(["maybe"], body.Items.Select(j => j.Title));
     }
 
     [Fact]
@@ -400,7 +415,7 @@ public sealed class JobsEndpointTests(SlofferApiFactory factory)
         var source = UniqueSource();
         await SeedAsync(
             NewJob(source, "unscored-new", Now.AddMinutes(-1)),
-            NewJob(source, "low", Now.AddMinutes(-2), score: 20),
+            NewJob(source, "low", Now.AddMinutes(-2), score: 60),
             NewJob(source, "high-old", Now.AddHours(-5), score: 80),
             NewJob(source, "high-new", Now.AddHours(-1), score: 80),
             NewJob(source, "unscored-old", Now.AddHours(-6)));
@@ -419,7 +434,7 @@ public sealed class JobsEndpointTests(SlofferApiFactory factory)
         var source = UniqueSource();
         await SeedAsync(
             NewJob(source, "old-high", Now.AddHours(-5), score: 90),
-            NewJob(source, "new-low", Now.AddHours(-1), score: 10),
+            NewJob(source, "new-low", Now.AddHours(-1), score: 60),
             NewJob(source, "mid-unscored", Now.AddHours(-3)));
 
         var body = await ListAsync($"source={source}&sort=posted");

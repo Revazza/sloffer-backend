@@ -46,8 +46,7 @@
     "title": "Staff Engineer, C#",
     "location": "Remote, Europe",
     "description": "<h3>Requirements</h3><ul><li>C# and ASP.NET Core</li><li>PostgreSQL</li></ul>",
-    "minScore": 1, "maxScore": 74, "reasonContains": "staff",
-    "pending": "PR 3: seniority"
+    "minScore": 1, "maxScore": 74, "reasonContains": "staff"
   },
   {
     "name": "spec: data engineer with C# a plus",
