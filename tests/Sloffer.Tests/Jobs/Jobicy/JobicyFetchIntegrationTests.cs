@@ -17,7 +17,11 @@ public sealed class JobicyFetchIntegrationTests
 
     private static ServiceProvider CreateServices(TimeProvider time, HttpMessageHandler handler, IDictionary<string, string?>? config = null)
     {
-        var configuration = new ConfigurationBuilder().AddInMemoryCollection(config ?? new Dictionary<string, string?>()).Build();
+        // ManualTimeProvider only fakes the clock, so Task.Delay would really wait: no delay between queries here.
+        var settings = new Dictionary<string, string?> { ["JobFetch:Jobicy:DelayBetweenRequests"] = "00:00:00" };
+        foreach (var (key, value) in config ?? new Dictionary<string, string?>())
+            settings[key] = value;
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddDbContext<SlofferDbContext>(o => o.UseNpgsql(TestDatabase.ConnectionString));
@@ -41,7 +45,47 @@ public sealed class JobicyFetchIntegrationTests
 
         Assert.Equal(new SourceFetchResult("jobicy", SourceFetchStatus.Failed), Assert.Single(first));
         Assert.Equal(SourceFetchStatus.Skipped, Assert.Single(second).Status);
-        Assert.Single(handler.Requests);
+        Assert.Equal(3, handler.Requests.Count); // all queries once, then nothing for an hour
+    }
+
+    [Fact]
+    public async Task RunCycle_runs_all_queries_at_most_once_per_hour()
+    {
+        var time = new ManualTimeProvider(Start);
+        var handler = StubHttpMessageHandler.Json("""{"jobs":[]}""");
+        await using var services = CreateServices(time, handler);
+        var fetcher = services.GetRequiredService<JobFetcher>();
+
+        var first = await fetcher.RunCycleAsync(CancellationToken.None);
+        time.Advance(TimeSpan.FromMinutes(59));
+        var second = await fetcher.RunCycleAsync(CancellationToken.None);
+        var afterSecond = handler.Requests.Count;
+        time.Advance(TimeSpan.FromMinutes(1));
+        var third = await fetcher.RunCycleAsync(CancellationToken.None);
+
+        Assert.Equal(SourceFetchStatus.Succeeded, Assert.Single(first).Status);
+        Assert.Equal(SourceFetchStatus.Skipped, Assert.Single(second).Status);
+        Assert.Equal(SourceFetchStatus.Succeeded, Assert.Single(third).Status);
+        Assert.Equal(3, afterSecond);
+        Assert.Equal(6, handler.Requests.Count);
+    }
+
+    [Fact]
+    public async Task RunCycle_one_failing_query_still_stores_the_others()
+    {
+        var time = new ManualTimeProvider(Start);
+        await DeleteStoredJobicyJobsAsync();
+        var handler = JobicyTestSetup.ByQuery(query => query.Contains("industry")
+            ? new HttpResponseMessage(HttpStatusCode.TooManyRequests) { Content = new StringContent("") }
+            : JobicyTestSetup.JsonResponse(JobicyTestSetup.Listings(Start.AddHours(-1), 900001, 900002)));
+        await using var services = CreateServices(time, handler);
+
+        var result = Assert.Single(await services.GetRequiredService<JobFetcher>().RunCycleAsync(CancellationToken.None));
+
+        Assert.Equal(SourceFetchStatus.Succeeded, result.Status);
+        Assert.Equal(2, result.Inserted);
+        var stored = await StoredJobsAsync(services, JobicyJobSource.SourceName);
+        Assert.Equal(["900001", "900002"], stored.Select(j => j.ExternalId).Order());
     }
 
     [Fact]
