@@ -216,6 +216,10 @@ public sealed class JobsEndpointTests(SlofferApiFactory factory)
     [InlineData("pageSize=101", "pageSize must be between 1 and 100.")]
     [InlineData("postedWithinHours=0", "postedWithinHours must be between 1 and 720.")]
     [InlineData("postedWithinHours=721", "postedWithinHours must be between 1 and 720.")]
+    [InlineData("minScore=-1", "minScore must be between 0 and 100.")]
+    [InlineData("minScore=101", "minScore must be between 0 and 100.")]
+    [InlineData("sort=newest", "sort must be 'score' or 'posted'.")]
+    [InlineData("sort=SCORE", "sort must be 'score' or 'posted'.")]
     public async Task List_invalid_paging_returns_400_with_message(string queryString, string expectedMessage)
     {
         using var client = factory.CreateClient();
@@ -291,10 +295,15 @@ public sealed class JobsEndpointTests(SlofferApiFactory factory)
         Assert.Equal(["200", "400"], ResponseCodes(list));
         Assert.Equal(["200", "404"], ResponseCodes(detail));
         var parameters = list.GetProperty("parameters").EnumerateArray().Select(p => p.GetProperty("name").GetString()).ToList();
-        foreach (var name in new[] { "Page", "PageSize", "Q", "Location", "Source", "PostedWithinHours", "IncludeDuplicates" })
+        foreach (var name in new[] { "Page", "PageSize", "Q", "Location", "Source", "PostedWithinHours", "IncludeDuplicates", "MinScore", "Sort" })
             Assert.Contains(parameters, p => string.Equals(p, name, StringComparison.OrdinalIgnoreCase));
         var itemSchema = document.RootElement.GetProperty("components").GetProperty("schemas").GetProperty("JobListItem");
         Assert.True(itemSchema.GetProperty("properties").TryGetProperty("duplicateOfId", out _));
+        Assert.True(itemSchema.GetProperty("properties").TryGetProperty("score", out _));
+        Assert.True(itemSchema.GetProperty("properties").TryGetProperty("scoreReasons", out _));
+        var detailSchema = document.RootElement.GetProperty("components").GetProperty("schemas").GetProperty("JobDetailResponse");
+        Assert.True(detailSchema.GetProperty("properties").TryGetProperty("score", out _));
+        Assert.True(detailSchema.GetProperty("properties").TryGetProperty("scoreReasons", out _));
         var postedWithinHours = list.GetProperty("parameters").EnumerateArray()
             .Single(p => string.Equals(p.GetProperty("name").GetString(), "PostedWithinHours", StringComparison.OrdinalIgnoreCase));
         Assert.Contains("JobFetch:MaxAgeDays * 24", postedWithinHours.GetProperty("description").GetString());
@@ -340,6 +349,136 @@ public sealed class JobsEndpointTests(SlofferApiFactory factory)
         Assert.Equal(original.Id, items["duplicate"].DuplicateOfId);
     }
 
+    [Fact]
+    public async Task List_by_default_hides_score_0_and_keeps_unscored_jobs()
+    {
+        var source = UniqueSource();
+        await SeedAsync(
+            NewJob(source, "good", Now.AddHours(-1), score: 70),
+            NewJob(source, "rejected", Now.AddHours(-2), score: 0),
+            NewJob(source, "unscored", Now.AddHours(-3)));
+
+        var body = await ListAsync($"source={source}");
+
+        Assert.Equal(["good", "unscored"], body.Items.Select(j => j.Title));
+        Assert.Equal(2, body.TotalCount);
+    }
+
+    [Fact]
+    public async Task List_minScore_0_shows_all_jobs()
+    {
+        var source = UniqueSource();
+        await SeedAsync(
+            NewJob(source, "good", Now.AddHours(-1), score: 70),
+            NewJob(source, "rejected", Now.AddHours(-2), score: 0),
+            NewJob(source, "unscored", Now.AddHours(-3)));
+
+        var body = await ListAsync($"source={source}&minScore=0");
+
+        Assert.Equal(["good", "rejected", "unscored"], body.Items.Select(j => j.Title));
+        Assert.Equal(3, body.TotalCount);
+    }
+
+    [Fact]
+    public async Task List_minScore_hides_scored_jobs_below_it()
+    {
+        var source = UniqueSource();
+        await SeedAsync(
+            NewJob(source, "fifty", Now.AddHours(-1), score: 50),
+            NewJob(source, "forty-nine", Now.AddHours(-2), score: 49),
+            NewJob(source, "unscored", Now.AddHours(-3)));
+
+        var body = await ListAsync($"source={source}&minScore=50");
+
+        Assert.Equal(["fifty", "unscored"], body.Items.Select(j => j.Title));
+        Assert.Equal(2, body.TotalCount);
+    }
+
+    [Fact]
+    public async Task List_by_default_sorts_by_score_descending_with_unscored_last_then_newest()
+    {
+        var source = UniqueSource();
+        await SeedAsync(
+            NewJob(source, "unscored-new", Now.AddMinutes(-1)),
+            NewJob(source, "low", Now.AddMinutes(-2), score: 20),
+            NewJob(source, "high-old", Now.AddHours(-5), score: 80),
+            NewJob(source, "high-new", Now.AddHours(-1), score: 80),
+            NewJob(source, "unscored-old", Now.AddHours(-6)));
+
+        var byDefault = await ListAsync($"source={source}");
+        var explicitScore = await ListAsync($"source={source}&sort=score");
+
+        string[] expected = ["high-new", "high-old", "low", "unscored-new", "unscored-old"];
+        Assert.Equal(expected, byDefault.Items.Select(j => j.Title));
+        Assert.Equal(expected, explicitScore.Items.Select(j => j.Title));
+    }
+
+    [Fact]
+    public async Task List_sort_posted_returns_newest_first_regardless_of_score()
+    {
+        var source = UniqueSource();
+        await SeedAsync(
+            NewJob(source, "old-high", Now.AddHours(-5), score: 90),
+            NewJob(source, "new-low", Now.AddHours(-1), score: 10),
+            NewJob(source, "mid-unscored", Now.AddHours(-3)));
+
+        var body = await ListAsync($"source={source}&sort=posted");
+
+        Assert.Equal(["new-low", "mid-unscored", "old-high"], body.Items.Select(j => j.Title));
+    }
+
+    [Fact]
+    public async Task List_returns_score_and_reasons_and_empty_reasons_when_unscored()
+    {
+        var source = UniqueSource();
+        await SeedAsync(
+            NewJob(source, "scored", Now.AddHours(-1), score: 65, reasons: [".NET role", "EMEA remote"]),
+            NewJob(source, "unscored", Now.AddHours(-2)));
+
+        var body = await ListAsync($"source={source}");
+
+        var items = body.Items.ToDictionary(j => j.Title);
+        Assert.Equal(65, items["scored"].Score);
+        Assert.Equal([".NET role", "EMEA remote"], items["scored"].ScoreReasons);
+        Assert.Null(items["unscored"].Score);
+        Assert.Empty(items["unscored"].ScoreReasons);
+    }
+
+    [Fact]
+    public async Task List_unscored_reasons_are_an_empty_json_array_not_null()
+    {
+        var source = UniqueSource();
+        await SeedAsync(NewJob(source, "unscored", Now.AddHours(-1)));
+        using var client = factory.CreateClient();
+
+        using var document = JsonDocument.Parse(await client.GetStringAsync($"/api/jobs?source={source}"));
+
+        var item = document.RootElement.GetProperty("items")[0];
+        Assert.Equal(JsonValueKind.Null, item.GetProperty("score").ValueKind);
+        Assert.Equal(JsonValueKind.Array, item.GetProperty("scoreReasons").ValueKind);
+        Assert.Equal(0, item.GetProperty("scoreReasons").GetArrayLength());
+    }
+
+    [Fact]
+    public async Task Get_returns_score_and_reasons()
+    {
+        var source = UniqueSource();
+        var scored = NewJob(source, "scored", Now.AddHours(-1), score: 0, reasons: ["Not a .NET role"]);
+        var unscored = NewJob(source, "unscored", Now.AddHours(-1));
+        await SeedAsync(scored, unscored);
+        using var client = factory.CreateClient();
+
+        var scoredBody = await client.GetFromJsonAsync<JobDetailResponse>($"/api/jobs/{scored.Id}");
+        var unscoredBody = await client.GetFromJsonAsync<JobDetailResponse>($"/api/jobs/{unscored.Id}");
+
+        Assert.NotNull(scoredBody);
+        Assert.Equal(0, scoredBody.Score);
+        Assert.Equal(["Not a .NET role"], scoredBody.ScoreReasons);
+        Assert.NotNull(unscoredBody);
+        Assert.Null(unscoredBody.Score);
+        Assert.Empty(unscoredBody.ScoreReasons);
+    }
+
     private static string UniqueSource() => $"api-test-{Guid.NewGuid():N}";
 
     private static Job NewJob(
@@ -349,7 +488,9 @@ public sealed class JobsEndpointTests(SlofferApiFactory factory)
         string company = "Example Co",
         string? location = "Europe",
         string? description = null,
-        Guid? id = null)
+        Guid? id = null,
+        int? score = null,
+        List<string>? reasons = null)
     {
         var externalId = Guid.NewGuid().ToString("N");
         return new Job
@@ -364,6 +505,9 @@ public sealed class JobsEndpointTests(SlofferApiFactory factory)
             Description = description,
             PostedAt = postedAt,
             FetchedAt = Now,
+            Score = score,
+            ScoreReasons = score is null ? null : reasons ?? [],
+            ScoredAt = score is null ? null : Now,
         };
     }
 

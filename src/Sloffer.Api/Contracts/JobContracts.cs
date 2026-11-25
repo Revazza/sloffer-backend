@@ -40,13 +40,28 @@ public sealed record JobListQuery
     /// <summary>Include jobs marked as duplicates of another job (same company and title, possibly on another source). Default false.</summary>
     [Description("Include jobs marked as duplicates of another job (same company and title, possibly from another source). Default false: duplicates are hidden and not counted in totalCount.")]
     public bool IncludeDuplicates { get; init; }
+
+    /// <summary>Hide scored jobs below this score, 0 to 100. Default 1 hides jobs that failed a hard rule (score 0); 0 shows all. Unscored jobs are always shown.</summary>
+    [Description("Hide scored jobs whose score is below this value, 0 to 100. Default 1 hides jobs that failed a hard rule (score 0); 0 shows all. Jobs not scored yet (score null) are always shown.")]
+    [Range(0, 100, ErrorMessage = "minScore must be between 0 and 100.")]
+    public int MinScore { get; init; } = 1;
+
+    /// <summary><c>score</c> (default): best score first, unscored last, then newest. <c>posted</c>: newest first.</summary>
+    [Description("'score' (default): highest score first, unscored jobs last, then newest first, then id. 'posted': newest first, then id.")]
+    [RegularExpression("^(score|posted)$", ErrorMessage = "sort must be 'score' or 'posted'.")]
+    public string Sort { get; init; } = SortByScore;
+
+    public const string SortByScore = "score";
+    public const string SortByPosted = "posted";
 }
 
-/// <summary>One page of jobs, newest first.</summary>
+/// <summary>One page of jobs, best score first by default.</summary>
 public sealed record JobListResponse(IReadOnlyList<JobListItem> Items, int Page, int PageSize, int TotalCount);
 
 /// <param name="DescriptionExcerpt">First 300 characters of the description as plain text (HTML tags stripped), or null.</param>
 /// <param name="DuplicateOfId">Id of the original job when this one is a duplicate, otherwise null. Only set on items returned with <c>includeDuplicates=true</c>.</param>
+/// <param name="Score">Rule-based fit score, 0-100 (0 = failed a hard rule), or null when not scored yet.</param>
+/// <param name="ScoreReasons">Plain-language reasons behind the score. Empty when not scored yet.</param>
 public sealed record JobListItem(
     Guid Id,
     string Source,
@@ -58,9 +73,13 @@ public sealed record JobListItem(
     string? Level,
     DateTimeOffset PostedAt,
     string? DescriptionExcerpt,
-    Guid? DuplicateOfId);
+    Guid? DuplicateOfId,
+    int? Score,
+    IReadOnlyList<string> ScoreReasons);
 
 /// <param name="Description">Description as returned by the source (HTML or text). Data only.</param>
+/// <param name="Score">Rule-based fit score, 0-100 (0 = failed a hard rule), or null when not scored yet.</param>
+/// <param name="ScoreReasons">Plain-language reasons behind the score. Empty when not scored yet.</param>
 public sealed record JobDetailResponse(
     Guid Id,
     string Source,
@@ -73,4 +92,6 @@ public sealed record JobDetailResponse(
     string? Level,
     string? Description,
     DateTimeOffset PostedAt,
-    DateTimeOffset FetchedAt);
+    DateTimeOffset FetchedAt,
+    int? Score,
+    IReadOnlyList<string> ScoreReasons);

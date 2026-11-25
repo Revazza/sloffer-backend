@@ -20,8 +20,8 @@ See `CLAUDE.md` for structure, all commands and conventions.
 
 The full contract is the OpenAPI document at `/openapi/v1.json` (Development only).
 
-- `GET /api/jobs`: recent jobs, newest first (`postedAt` descending, then `id`). Query: `page` (default 1), `pageSize` (default 20, max 100), `q` (title or company, case-insensitive), `location` (case-insensitive contains), `source` (exact), `postedWithinHours` (default `JobFetch:MaxAgeDays * 24`, so 168; max 720; pass 24 for "new today"), `includeDuplicates` (default false). Returns `items`, `page`, `pageSize`, `totalCount`; each item has a plain-text `descriptionExcerpt` (first 300 characters) and `duplicateOfId`. Duplicates (see below) are hidden and not counted unless `includeDuplicates=true`. Out-of-range values return 400 (validation problem details).
-- `GET /api/jobs/{id}`: one job including the full `description` as stored from the source, or 404.
+- `GET /api/jobs`: recent jobs, best match first. Query: `page` (default 1), `pageSize` (default 20, max 100), `q` (title or company, case-insensitive), `location` (case-insensitive contains), `source` (exact), `postedWithinHours` (default `JobFetch:MaxAgeDays * 24`, so 168; max 720; pass 24 for "new today"), `includeDuplicates` (default false), `minScore` (0-100, default 1: scored jobs below it are hidden, so score-0 rejects are hidden by default; `0` shows all; unscored jobs are always shown), `sort` (`score` (default): `score` descending with unscored jobs last, then `postedAt` descending, then `id`; `posted`: `postedAt` descending, then `id`). Returns `items`, `page`, `pageSize`, `totalCount`; each item has a plain-text `descriptionExcerpt` (first 300 characters), `duplicateOfId`, `score` (null when not scored yet) and `scoreReasons` (empty when not scored yet). Duplicates (see below) are hidden and not counted unless `includeDuplicates=true`. Out-of-range or unknown values return 400 (validation problem details).
+- `GET /api/jobs/{id}`: one job including the full `description` as stored from the source, `score` and `scoreReasons`, or 404.
 
 ## Job fetching (`Sloffer.Jobs`)
 
